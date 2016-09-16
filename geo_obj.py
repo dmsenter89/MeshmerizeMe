@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Python Class to create geometry objects for
 # use with IB2D and IBAMR
 # ==============================================================================
