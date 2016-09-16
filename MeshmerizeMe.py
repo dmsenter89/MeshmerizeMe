@@ -8,6 +8,7 @@ class App(QMainWindow, ui.Ui_MainWindow):
         super(App, self).__init__(parent)
         self.setupUi(self)
         self.btnLoadFile.clicked.connect(self.load_file)
+        self.actionOpen_File.triggered.connect(self.load_file)
         self.actionQuit.triggered.connect(self.close_app)
 
     def load_file(self):
@@ -15,6 +16,7 @@ class App(QMainWindow, ui.Ui_MainWindow):
         fname = QFileDialog.getOpenFileName(self, "Open SVG File", '', "Vector Image(*.svg);;All Files (*)")
         if fname:
             ftext=open(fname).read()
+            self.labTitle.setText(fname + " opened.")
             self.textEdit.setPlainText(ftext)
 
     def close_app(self):

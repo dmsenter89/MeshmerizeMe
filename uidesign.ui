@@ -2,21 +2,13 @@
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>800</width>
-    <height>255</height>
-   </rect>
-  </property>
   <property name="windowTitle">
    <string>MeshmerizeMe</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QLabel" name="labWelcome">
+     <widget class="QLabel" name="labTitle">
       <property name="text">
        <string>Welcome to MeshmerizeMe! Please select a file to continue.</string>
       </property>
@@ -39,7 +31,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>444</width>
      <height>26</height>
     </rect>
    </property>
@@ -47,6 +39,7 @@
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionOpen_File"/>
     <addaction name="actionQuit"/>
    </widget>
    <addaction name="menuFile"/>
@@ -55,6 +48,11 @@
   <action name="actionQuit">
    <property name="text">
     <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionOpen_File">
+   <property name="text">
+    <string>Open File</string>
    </property>
   </action>
  </widget>
