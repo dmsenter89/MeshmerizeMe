@@ -48,6 +48,25 @@ class Spring():
                     " " + repr(self.beta) + "\n"
         return spring_str
 
+class Beam():
+    """
+    defines a beam element.
+    """
+    def __init__(self, lID, mID, rID, stiff, curv):
+        self.lID = lID
+        self.mID = mID
+        self.rID = rID
+        self.kb = stiff     # beam stiffness
+        self.c  = curv      # beam curvature
+
+    def getType(self):
+        return "beam"
+
+    def printString(self):
+        beam_str = repr(self.lID) + " " + repr(self.mID) + " " + \
+                   repr(self.rID) + " " + repr(self.kb)  + " " + \
+                   repr(self.c) + "\n"
+        return beam_str
 
 #===============================================================================
 # Function to write the various geometry files
