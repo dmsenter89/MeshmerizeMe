@@ -6,11 +6,14 @@
 #      - Vertex: the x,y grid of points. It's elements will be used as
 #           as references for other objects in the plane.
 #      - Spring
+#      - Beam
+#      - Porous Point
+#      - Mass
 # ==============================================================================
 
 class Vertex():
     """
-    defines the x,y nodes in 2D
+    defines the x,y Lagrangian nodes
     """
     def __init__(self,x,y):
         self.x = x
@@ -53,9 +56,9 @@ class Beam():
     defines a beam element.
     """
     def __init__(self, lID, mID, rID, stiff, curv):
-        self.lID = lID
-        self.mID = mID
-        self.rID = rID
+        self.lID = lID      # left node in beam
+        self.mID = mID      # middle node in beam
+        self.rID = rID      # right node in beam
         self.kb = stiff     # beam stiffness
         self.c  = curv      # beam curvature
 
@@ -67,6 +70,41 @@ class Beam():
                    repr(self.rID) + " " + repr(self.kb)  + " " + \
                    repr(self.c) + "\n"
         return beam_str
+
+class PorousPt():
+    """
+    defines a porous point.
+    ONLY works in IB2d, does NOT work in IBAMR.
+    """
+    def __init__(self, lagID, pcoeff, stenID):
+        self.lagID  = lagID     # node which is porous
+        self.pcoeff = pcoeff    # porosity coefficient
+        self.stenID = stenID    # stencil ID
+
+    def getType(self):
+        return "porous"
+
+    def printString(self):
+        pstring = repr(self.lagID) + " " + repr(self.pcoeff) + " " + \
+                  repr(self.stenID) + "\n"
+        return pstring
+
+class Mass():
+    """
+    defines a mass.
+    """
+    def __init__(self, lagId, stiff, kg):
+        self.lagID = lagID  # Lagrangian node ID
+        self.stiff = stiff  # stiffness of Mass
+        self.kg    = kg     # mass of point
+
+    def getType(self):
+        return "mass"
+
+    def printString(self):
+        mstring = repr(self.lagID) + " " + repr(self.stiff) + " " + \
+               repr(self.kg) + "\n"
+        return mstring
 
 #===============================================================================
 # Function to write the various geometry files
