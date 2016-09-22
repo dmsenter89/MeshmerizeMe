@@ -93,7 +93,7 @@ class Mass():
     """
     defines a mass.
     """
-    def __init__(self, lagId, stiff, kg):
+    def __init__(self, lagID, stiff, kg):
         self.lagID = lagID  # Lagrangian node ID
         self.stiff = stiff  # stiffness of Mass
         self.kg    = kg     # mass of point
