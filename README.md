@@ -15,4 +15,4 @@ SVG documents with 1:1 aspect ratio. Black lines will represent beams and black 
 File will write `ProjectName.OBJ` files, where `OBJ` will correspond to the geometry, such `vertex` or `spring`.
 
 ## Requirements:
-Python 3.x. PyQt4.
+Python 3.x. PyQt4. svg.path (installable via pip).
