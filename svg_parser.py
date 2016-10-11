@@ -163,9 +163,12 @@ def test():
     print('Reading in sample paths from "simple.svg."')
     params = {}   # initialize empty parameter dictionary
     all_paths, params = get_paths('simple.svg', params)
+    print('Reading in parameters from "input2d".')
     params = get_sim_parameters('input2d', params)
+    print('Making the vertices.')
     vertices = make_vertices(all_paths, params)
+    print('Writing "test.vertex".')
     writeFile('test', vertices)
+    print('Finished demo.')
 
-if '__name__'=='__main__':
-    test()
+if __name__ == '__main__': test()
