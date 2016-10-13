@@ -11,6 +11,7 @@ class App(QMainWindow, ui.Ui_MainWindow):
         self.btnLoadFile.clicked.connect(self.load_file)
         self.actionOpen_File.triggered.connect(self.load_file)
         self.actionQuit.triggered.connect(self.close_app)
+        self.actionAbout.triggered.connect(self.aboutDiag)
 
     def load_file(self):
         self.textEdit.clear()
@@ -35,6 +36,16 @@ class App(QMainWindow, ui.Ui_MainWindow):
         self.textEdit.append('Vertices written to {}.vertex'.format(outFile))
         self.textEdit.append('MeshmerizeMe completed. Please manually '
                             'verify your files for integrity.')
+
+    def aboutDiag(self):
+        text = "<h2>MeshmerizeMe 0.1</h2>"\
+                "<p>Author: Michael Senter<br>UNC Chapel Hill, Miller Lab</p>"\
+                "<p>MeshmerizeMe is a Python script intended to assist with "\
+                "creating geometries for fluid simulations using IBAMR and "\
+                "IB2d. It uses a user-supplied SVG file and input2d file "\
+                "to create .vertex files."
+        a = QMessageBox.about(self, "About", text)
+        #a.exec_()
 
     def close_app(self):
         sys.exit()
