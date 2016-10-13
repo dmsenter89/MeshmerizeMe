@@ -73,6 +73,9 @@ def get_sim_parameters(fname, params):
                 for s in line.split():
                     if re.match("^\d+?(\.\d+)?$", s) is not None:
                         params['Ly'] = float(s)
+            elif 'string_name' in line:
+                split_line = line.split()
+                params['SimName'] = split_line[2]
     params['Ds'] = 0.5*params['Lx']/params['Nx']
     return params
 
