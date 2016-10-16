@@ -97,8 +97,8 @@ def coord_transform(z, params):
     h = params['height']
     Lx = params['Lx']
     Ly = params['Ly']
-    x = z.real*Lx
-    y = (h-z.imag)*Ly
+    x = z.real*Lx/w
+    y = (h-z.imag)*Ly/h
     return complex(x,y)
 
 
