@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
+import os
 import argparse
 import matplotlib.pyplot as plt
 #from PyQt5.QtGui import *
@@ -30,7 +31,7 @@ def plot_points(vec, params):
     """
     x = [elem.real for elem in vec]
     y = [elem.imag for elem in vec]
-    plt.scatter(x, y)
+    plt.scatter(x, y, s=2)
     title_string = params['SimName'] + ' Experiment'
     plt.title(title_string)
     plt.xlabel('Width in meters')
@@ -39,24 +40,23 @@ def plot_points(vec, params):
     plt.grid(True)
     plt.show()
 
-def main(files):
-    print('Got the files, getting started.')
+def main(infilepath):
+    path, infile = os.path.split(infilepath)
+    print('Got the file and path, getting started.')
     params = {}
-    params = get_sim_parameters(files['parameters'], params)
-    vec = read_vertices(files['vertex'])
+    params = get_sim_parameters(infilepath, params)
+    svgfile = path + params['SimName'] + '.vertex'
+    vec = read_vertices(path + params['SimName'] + '.vertex')
     plot_points(vec, params)
     print('File Plotted. Thank you.')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'Script to visualize a '
                                     '.vertex file in matplotlib.')
-    parser.add_argument('-f', '--file', required=True,
-                        help='Path to .vertex file')
     parser.add_argument('-p', '--param', required=True,
-                        help='Path to input2d')
+                        help='Path to input2d for sim')
     args = parser.parse_args()
-    if args.file:
-        files = {'vertex': args.file, 'parameters': args.param}
-        main(files)
+    if args.param:
+        main(args.param)
     else:
         print('GUI version not implemented yet. Use terminal. See -h.')
