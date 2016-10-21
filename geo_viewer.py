@@ -1,11 +1,10 @@
-#!/usr/bin/env python3
-# coding: utf-8
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 import os
 import argparse
 import matplotlib.pyplot as plt
-#from PyQt5.QtGui import *
-#from PyQt5.QWidget import *
-from svg_parser import get_sim_parameters
+from input_parser import fetch_input_params
 
 def read_vertices(fname):
     """
@@ -43,8 +42,7 @@ def plot_points(vec, params):
 def main(infilepath):
     path, infile = os.path.split(infilepath)
     print('Got the file and path, getting started.')
-    params = {}
-    params = get_sim_parameters(infilepath, params)
+    params = fetch_input_params(infilepath)
     svgfile = path + params['SimName'] + '.vertex'
     vec = read_vertices(path + params['SimName'] + '.vertex')
     plot_points(vec, params)

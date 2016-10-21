@@ -1,4 +1,6 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
+
 """Python module to transform svg-paths into vertex files.
 
 This file incorporates functions that will read in an svg file, parse it,
@@ -20,7 +22,7 @@ from geo_obj import Vertex, writeFile
 import re
 
 
-def get_paths(fname, params):
+def get_paths(fname, params={}):
     """ Extract all paths and size from an svg file.
 
     This function scans over an svg to extract all paths as svg.path path objects

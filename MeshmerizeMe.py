@@ -1,10 +1,12 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
-#from PyQt4.QtGui import *
+
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import sys
 import uidesign as ui
 from svg_parser import *
+from input_parser import fetch_input_params
 
 class App(QMainWindow, ui.Ui_MainWindow):
     def __init__(self, parent=None):
@@ -25,15 +27,15 @@ class App(QMainWindow, ui.Ui_MainWindow):
                                             "All Files (*)")
         self.textEdit.append('Loaded SVG and input2d files.')
         self.labTitle.setText('Thanks. Meshmerizing now.')
-        params = {}   # empty dict necessary for svg_parser functions
-        all_paths, params = get_paths(fname_svg[0], params)
+        all_paths, params = get_paths(fname_svg[0])
         self.textEdit.append('Successfully loaded {} path(s) '
                              'from image.'.format(len(all_paths)))
-        params = get_sim_parameters(fname_param[0], params)
+        #params = get_sim_parameters(fname_param[0], params)
+        params = fetch_input_params(fname_param[0], params)
         self.textEdit.append('Loaded simulation parameters.')
         vertices = make_vertices(all_paths, params)
         self.textEdit.append('Vertices created.')
-        outFile = params['SimName']
+        outFile = params['string_name']
         writeFile(outFile, vertices)
         self.textEdit.append('Vertices written to {}.vertex'.format(outFile))
         self.textEdit.append('MeshmerizeMe completed. Please manually '
