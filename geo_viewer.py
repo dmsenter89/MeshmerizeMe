@@ -31,7 +31,7 @@ def plot_points(vec, params):
     x = [elem.real for elem in vec]
     y = [elem.imag for elem in vec]
     plt.scatter(x, y, s=2)
-    title_string = params['SimName'] + ' Experiment'
+    title_string = params['string_name'] + ' Experiment'
     plt.title(title_string)
     plt.xlabel('Width in meters')
     plt.ylabel('Height in meters')
@@ -43,8 +43,8 @@ def main(infilepath):
     path, infile = os.path.split(infilepath)
     print('Got the file and path, getting started.')
     params = fetch_input_params(infilepath)
-    svgfile = path + params['SimName'] + '.vertex'
-    vec = read_vertices(path + params['SimName'] + '.vertex')
+    svgfile = os.path.join(path, params['string_name'] + '.vertex')
+    vec = read_vertices(svgfile)
     plot_points(vec, params)
     print('File Plotted. Thank you.')
 
