@@ -3,6 +3,7 @@ MeshmerizeMe is a python script intended to convert SVG files into
 geometry files for use with IBAMR and IB2D. This version will only
 handle 2D code.
 
+See the project wiki for more information.
 
 ## Input
 SVG documents with 1:1 aspect ratio and an input2d file for the simulation.
