@@ -7,6 +7,7 @@ import sys
 import uidesign as ui
 from svg_parser import *
 from input_parser import fetch_input_params
+from geo_viewer import *
 
 class App(QMainWindow, ui.Ui_MainWindow):
     def __init__(self, parent=None):
@@ -16,6 +17,7 @@ class App(QMainWindow, ui.Ui_MainWindow):
         self.actionOpen_File.triggered.connect(self.load_file)
         self.actionQuit.triggered.connect(self.close_app)
         self.actionAbout.triggered.connect(self.aboutDiag)
+        self.actionView_Geometry.triggered.connect(self.geoView)
 
     def load_file(self):
         self.textEdit.clear()
@@ -41,6 +43,18 @@ class App(QMainWindow, ui.Ui_MainWindow):
         self.textEdit.append('MeshmerizeMe completed. Please manually '
                             'verify your files for integrity.')
 
+    def geoView(self):
+        fnamepath = QFileDialog.getOpenFileName(self,
+                                                "Open input2d File", '',
+                                                "All Files (*)")
+        path, infile = os.path.split(fnamepath[0])
+        self.textEdit.setText("Opened {}.".format(fnamepath[0]))
+        self.textEdit.append("Begin processing parameters.")
+        params = fetch_input_params(os.path.join(path,'input2d'))
+        vec = read_vertices(fnamepath[0])
+        plot_points(vec, params)
+        self.textEdit.append("Plotting completed.")
+
     def aboutDiag(self):
         text = "<h2>MeshmerizeMe 0.1</h2>"\
                 "<p>Author: Michael Senter<br>UNC Chapel Hill, Miller Lab</p>"\
@@ -49,7 +63,6 @@ class App(QMainWindow, ui.Ui_MainWindow):
                 "IB2d. It uses a user-supplied SVG file and input2d file "\
                 "to create .vertex files."
         a = QMessageBox.about(self, "About", text)
-        #a.exec_()
 
     def close_app(self):
         sys.exit()
