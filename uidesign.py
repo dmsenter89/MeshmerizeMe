@@ -59,12 +59,13 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MeshmerizeMe"))
-        self.labTitle.setText(_translate("MainWindow", "Welcome to MeshmerizeMe! Please select a file to continue."))
-        self.btnLoadFile.setText(_translate("MainWindow", "Load File"))
+        self.labTitle.setText(_translate("MainWindow", "Welcome to MeshmerizeMe!\n"
+"Please select a file to continue."))
+        self.btnLoadFile.setText(_translate("MainWindow", "Load SVG"))
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.menuHelp.setTitle(_translate("MainWindow", "Help"))
         self.actionQuit.setText(_translate("MainWindow", "Quit"))
-        self.actionOpen_File.setText(_translate("MainWindow", "Load File"))
+        self.actionOpen_File.setText(_translate("MainWindow", "Load SVG"))
         self.actionAbout.setText(_translate("MainWindow", "About MeshmerizeMe"))
         self.actionView_Geometry.setText(_translate("MainWindow", "View Geometry (Lag Pts)"))
 
