@@ -43,7 +43,11 @@ class Ui_MainWindow(object):
         self.actionOpen_File.setObjectName("actionOpen_File")
         self.actionAbout = QtWidgets.QAction(MainWindow)
         self.actionAbout.setObjectName("actionAbout")
+        self.actionView_Geometry = QtWidgets.QAction(MainWindow)
+        self.actionView_Geometry.setObjectName("actionView_Geometry")
         self.menuFile.addAction(self.actionOpen_File)
+        self.menuFile.addAction(self.actionView_Geometry)
+        self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionQuit)
         self.menuHelp.addAction(self.actionAbout)
         self.menubar.addAction(self.menuFile.menuAction())
@@ -55,11 +59,13 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MeshmerizeMe"))
-        self.labTitle.setText(_translate("MainWindow", "Welcome to MeshmerizeMe! Please select a file to continue."))
-        self.btnLoadFile.setText(_translate("MainWindow", "Load File"))
+        self.labTitle.setText(_translate("MainWindow", "Welcome to MeshmerizeMe!\n"
+"Please select a file to continue."))
+        self.btnLoadFile.setText(_translate("MainWindow", "Load SVG"))
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.menuHelp.setTitle(_translate("MainWindow", "Help"))
         self.actionQuit.setText(_translate("MainWindow", "Quit"))
-        self.actionOpen_File.setText(_translate("MainWindow", "Open File"))
+        self.actionOpen_File.setText(_translate("MainWindow", "Load SVG"))
         self.actionAbout.setText(_translate("MainWindow", "About MeshmerizeMe"))
+        self.actionView_Geometry.setText(_translate("MainWindow", "View Geometry (Lag Pts)"))
 
