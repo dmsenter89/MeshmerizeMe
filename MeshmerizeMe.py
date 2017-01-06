@@ -7,6 +7,7 @@ import sys
 import uidesign as ui
 from svg_parser import *
 from input_parser import fetch_input_params
+from geo_viewer import *
 
 class App(QMainWindow, ui.Ui_MainWindow):
     def __init__(self, parent=None):
@@ -16,30 +17,47 @@ class App(QMainWindow, ui.Ui_MainWindow):
         self.actionOpen_File.triggered.connect(self.load_file)
         self.actionQuit.triggered.connect(self.close_app)
         self.actionAbout.triggered.connect(self.aboutDiag)
+        self.actionView_Geometry.triggered.connect(self.geoView)
 
     def load_file(self):
         self.textEdit.clear()
         # request necessary files for svg_parser
         fname_svg = QFileDialog.getOpenFileName(self, "Open SVG File", '',
                                             "Vector Image(*.svg);;All Files (*)")
-        fname_param = QFileDialog.getOpenFileName(self,
-                                            "Open input2d File", '',
-                                            "All Files (*)")
+        fpath, svg_name = os.path.split(fname_svg[0])
+#        fname_param = QFileDialog.getOpenFileName(self,
+#                                            "Open input2d File", '',
+#                                            "All Files (*)")
         self.textEdit.append('Loaded SVG and input2d files.')
         self.labTitle.setText('Thanks. Meshmerizing now.')
         all_paths, params = get_paths(fname_svg[0])
         self.textEdit.append('Successfully loaded {} path(s) '
                              'from image.'.format(len(all_paths)))
-        #params = get_sim_parameters(fname_param[0], params)
-        params = fetch_input_params(fname_param[0], params)
-        self.textEdit.append('Loaded simulation parameters.')
+        finput2d = os.path.join(fpath, 'input2d')
+        params = fetch_input_params(finput2d, params)
+        self.textEdit.append('Loaded simulation parameters '
+                            'from {}.'.format(finput2d))
         vertices = make_vertices(all_paths, params)
         self.textEdit.append('Vertices created.')
-        outFile = params['string_name']
+        outFile = os.path.join(fpath,params['string_name'])
         writeFile(outFile, vertices)
         self.textEdit.append('Vertices written to {}.vertex'.format(outFile))
         self.textEdit.append('MeshmerizeMe completed. Please manually '
                             'verify your files for integrity.')
+
+    def geoView(self):
+        fnamepath = QFileDialog.getOpenFileName(self,
+                                                "Open input2d File", '',
+                                                "All Files (*)")
+        path, infile = os.path.split(fnamepath[0])
+        self.textEdit.setText("Opened {}.".format(fnamepath[0]))
+        finput2d = os.path.join(path,'input2d')
+        self.textEdit.append("Begin processing parameters "
+                            "from {}.".format(finput2d))        
+        params = fetch_input_params(finput2d)
+        vec = read_vertices(fnamepath[0])
+        plot_points(vec, params)
+        self.textEdit.append("Plotting completed.")
 
     def aboutDiag(self):
         text = "<h2>MeshmerizeMe 0.1</h2>"\
@@ -49,7 +67,6 @@ class App(QMainWindow, ui.Ui_MainWindow):
                 "IB2d. It uses a user-supplied SVG file and input2d file "\
                 "to create .vertex files."
         a = QMessageBox.about(self, "About", text)
-        #a.exec_()
 
     def close_app(self):
         sys.exit()

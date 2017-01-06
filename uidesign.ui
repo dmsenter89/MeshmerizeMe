@@ -18,7 +18,8 @@
     <item>
      <widget class="QLabel" name="labTitle">
       <property name="text">
-       <string>Welcome to MeshmerizeMe! Please select a file to continue.</string>
+       <string>Welcome to MeshmerizeMe!
+Please select a file to continue.</string>
       </property>
      </widget>
     </item>
@@ -28,7 +29,7 @@
     <item>
      <widget class="QPushButton" name="btnLoadFile">
       <property name="text">
-       <string>Load File</string>
+       <string>Load SVG</string>
       </property>
      </widget>
     </item>
@@ -48,6 +49,8 @@
      <string>File</string>
     </property>
     <addaction name="actionOpen_File"/>
+    <addaction name="actionView_Geometry"/>
+    <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -67,12 +70,17 @@
   </action>
   <action name="actionOpen_File">
    <property name="text">
-    <string>Open File</string>
+    <string>Load SVG</string>
    </property>
   </action>
   <action name="actionAbout">
    <property name="text">
     <string>About MeshmerizeMe</string>
+   </property>
+  </action>
+  <action name="actionView_Geometry">
+   <property name="text">
+    <string>View Geometry (Lag Pts)</string>
    </property>
   </action>
  </widget>
