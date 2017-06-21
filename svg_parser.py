@@ -16,6 +16,8 @@ ISSUES:
 """
 
 from xml.dom import minidom
+import xml.etree.ElementTree as ET
+from tqdm import tqdm
 from svg.path import parse_path
 from numpy import linspace
 from geo_obj import Vertex, writeFile
@@ -36,13 +38,19 @@ def get_paths(fname, params={}):
         paths: a list of path objects (svg.path module).
         params: dictionary updated with the extracted information.
     """
-    svg_doc = minidom.parse(fname)
-    path_strings = [path.getAttribute('d') for path in svg_doc.getElementsByTagName('path')]
-    for info in svg_doc.getElementsByTagName('svg'):
-        params['width'] = float(info.getAttribute('width'))
-        params['height'] = float(info.getAttribute('height'))
-    svg_doc.unlink()
-    paths = [parse_path(p) for p in path_strings]
+    # svg_doc = minidom.parse(fname)
+    # path_strings = [path.getAttribute('d') for path in svg_doc.getElementsByTagName('path')]
+    # for info in svg_doc.getElementsByTagName('svg'):
+    #     params['width'] = float(info.getAttribute('width'))
+    #     params['height'] = float(info.getAttribute('height'))
+    # svg_doc.unlink()
+    # paths = [parse_path(p) for p in path_strings]
+    mySvg = Svg(fname)
+    paths = mySvg.get_paths()
+    params['Space'] = mySvg.space
+    w, h = params['Space'].get_max_size()
+    params['width'] = w
+    params['height'] = h
     return paths, params
 
 
@@ -95,13 +103,15 @@ def coord_transform(z, params):
     Returns:
         complex(x,y): complex number representing point in input2d coordinates.
     """
-    w = params['width']
-    h = params['height']
+    # w = params['width']
+    # h = params['height']
+    w, h = params['Space'].get_max_size()
+    x, y = params['Space'].get_origin()
     Lx = params['Lx']
     Ly = params['Ly']
-    x = z.real*Lx/w
-    y = (h-z.imag)*Ly/h
-    return complex(x,y)
+    xnew = (z.real-x)*Lx/(w-x)
+    ynew = (h-z.imag)*Ly/(h-y)
+    return complex(xnew,ynew)
 
 
 def points_on_path(path, params):
@@ -135,7 +145,8 @@ def make_vertices(path_list, params):
         svg file.
     """
     vertex_vec = []
-    for path in path_list:
+    print("Begin making vertices.")
+    for path in tqdm(path_list):
         cvert_vec = []
         pts = points_on_path(path,params)
         for p in pts:
@@ -160,6 +171,126 @@ def chk_vertex_dist(a,b):
     dx = a.x-b.x
     dy = a.y-b.y
     return (dx**2+dy**2)**(1/2)
+
+
+class Space():
+    """ Simple class representing a two-dimensional space.
+
+    Class represents the two-dimensional space in which a path defined in an
+    SVG lives. The class provides two getters returning tuples to get both the
+    origin of the coordinate system as well as the max x/y values.
+
+    Args:
+        - boxstr: the string of the viewBox field in an SVG file.
+    """
+    def __init__(self, boxstr):
+        boxvals = []
+        for i in boxstr.split():
+            boxvals.append(float(i))
+        self.x = boxvals[0]
+        self.y = boxvals[1]
+        self.width = boxvals[2]
+        self.height = boxvals[3]
+
+    def get_origin(self):
+        return (self.x, self.y)
+
+    def get_max_size(self):
+        return (self.width, self.height)
+
+
+class Svg():
+    """
+    Class represents an SVG file with its paths and geometric objects.
+    """
+
+    def __init__(self, fname):
+        """ Initializer takes file name (fname) and returns an object
+        representing the objects in the Svg with their properties.
+        """
+        tree = ET.parse(fname)
+        root = tree.getroot()
+        self.rattrib = root.attrib
+        self.space = self.find_space()
+        self.objcts = self.find_objects(root)
+
+    def find_space(self):
+        """
+        Class function that finds the space on which the elements in the
+        SVG file are defined.
+        """
+        x,y,width,heigth = (0,0,-1,-1)  # default initialize, to be overwritten
+        if 'viewBox' in self.rattrib:
+            # easiest way to handles
+            boxstr = self.rattrib['viewBox']
+        else:
+            if 'width' in self.rattrib:
+                width = float(self.rattrib['width'])
+            if 'height' in self.rattrib:
+                height = float(self.rattrib['height'])
+
+            # the following two checks are done to handle the fact that an SVG
+            # space needs to only define the height or the width, with the other
+            # assumed equal to the defined value
+            if (width>0 and height<0):
+                height = width
+            if (width<0 and height>0):
+                width = height
+
+            # now create boxstr for Space class
+            boxstr = "{} {} {} {}".format(x,y,width,height)
+        mySpace = Space(boxstr)
+        return mySpace
+
+    def find_objects(self, rnode):
+        """
+        Quick function that generates a list of all path and other geometric
+        objects in the SVG.
+        """
+        objs = [SvgObject(child) for child in rnode]
+        return objs
+
+    def get_paths(self):
+        paths = []
+        for elem in self.objcts:
+            if elem.type=='path':
+                paths.append(parse_path(elem.get('d')))
+        return paths
+
+
+
+class SvgObject():
+    """
+    Class to hold an object existing in an SVG. It includes fiunctions to print
+    an oject with its attribute dictionary as well as a generic getter to access
+    the attributes from the internal dictionary.
+    """
+
+    def __init__(self, node):
+        """
+        initialize using a node returned by an ElementTree.
+        """
+        if '}' in node.tag:
+            # this handles namespaces
+            self.type = node.tag.split('}',1)[1]
+        else:
+            self.type = node.tag    # str holds name of object
+        self.attr = node.attrib  # dic with attributes of element
+
+    def get(self, attribute):
+        """ Getter returns an attribute from the attribute dictionary as string.
+
+        Args:
+            - attribue: string representing the attribute searched for.
+
+        Returns:
+            String with the attribute value.
+        """
+        return self.attr[attribute]
+
+    def print_object(self):
+        """Print node name and attribute dictionary to console."""
+        print("{} | {}".format(self.type, self.attr))
 
 
 def test():
