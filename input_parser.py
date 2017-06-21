@@ -19,7 +19,7 @@ def fetch_input_params(fname, params={}):
     """
     with open(fname) as inFile:
         for line in inFile:
-            if line[0].isalpha():
+            if (line[0].isalpha()) and ('=' in line):
                 parts = line.split()
                 try:
                     params[parts[0]] = float(parts[2])
