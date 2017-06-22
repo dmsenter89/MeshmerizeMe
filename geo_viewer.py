@@ -24,7 +24,7 @@ def read_vertices(fname):
         i += 1
     return vec
 
-def plot_points(vec, params):
+def plot_points(vec, params, display=True, path=None):
     """
     Plots vec as a scatter plot.
     """
@@ -37,7 +37,10 @@ def plot_points(vec, params):
     plt.ylabel('Height in meters')
     plt.axis([0, params['Lx']*1.1, 0, params['Ly']*1.1])
     plt.grid(True)
-    plt.show()
+    if display:
+        plt.show()
+    else:
+        plt.savefig(path, dpi=400)
 
 def main(infilepath):
     path, infile = os.path.split(infilepath)
@@ -56,5 +59,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.param:
         main(args.param)
-    else:
-        print('GUI version not implemented yet. Use terminal. See -h.')
