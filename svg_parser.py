@@ -10,12 +10,12 @@ IBAMR.
 ISSUES:
     The SVG file needs to be in a very specific format for this to work.
     1) the file needs to have it's height and width given in pixels, as simple
-        float numbers, not in millimeters or anything.
+        float numbers, not in millimeters or anything, OR specify a viewBox.
     2) The svg *cannot* be using the translate feature or any other feature
         that alters its coordinate system relative to the viewbox.
+    3) The svg parser cannot currently handle groups (<g> elements).
 """
 
-from xml.dom import minidom
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
 from svg.path import parse_path
@@ -38,13 +38,6 @@ def get_paths(fname, params={}):
         paths: a list of path objects (svg.path module).
         params: dictionary updated with the extracted information.
     """
-    # svg_doc = minidom.parse(fname)
-    # path_strings = [path.getAttribute('d') for path in svg_doc.getElementsByTagName('path')]
-    # for info in svg_doc.getElementsByTagName('svg'):
-    #     params['width'] = float(info.getAttribute('width'))
-    #     params['height'] = float(info.getAttribute('height'))
-    # svg_doc.unlink()
-    # paths = [parse_path(p) for p in path_strings]
     mySvg = Svg(fname)
     paths = mySvg.get_paths()
     params['Space'] = mySvg.space
