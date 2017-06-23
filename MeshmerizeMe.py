@@ -164,17 +164,18 @@ if __name__ == '__main__':
                 "MeshmerizeMe is a Python script intended to assist with "
                 "creating geometries for fluid simulations using IBAMR and "
                 "IB2d. It uses a user-supplied SVG file and input2d file to "
-                "create .vertex files.",
-                epilog = "Note that the svgfile argument is optional. If no "
-                "svg file is specified on the commandline, the program will "
-                "start in GUI mode. If the user supplies the path to an SVG "
-                "file on the commandline, MeshmerizeMe will directly proceed "
-                "to create the .vertex file.")
+                "create .vertex files, and can plot the same.",
+                epilog = "Note that the file argument is optional. If no "
+                "file is specified on the commandline the program will "
+                "start in batch mode. If the user supplies the path to one or "
+                "more file(s) on the commandline, MeshmerizeMe will proceed "
+                "to process them.")
     arggroup = parser.add_mutually_exclusive_group()
     parser.add_argument('--gui', action="store_true", help="Start GUI mode. "
                         "Ignores other parameters.")
     arggroup.add_argument('-i', '--input-file', action="store_true",
-                        help="Mesh SVG file(s). Exclusive with plot option.",
+                        help="Mesh SVG file(s). Default option. "
+                        "Exclusive with plot.",
                         default=True)
     arggroup.add_argument('-p', '--plot', action="store_true",
                 help="Plot existing .vertex file(s). Exclusive with input-file.",
