@@ -78,7 +78,10 @@ def get_sim_parameters(fname, params):
                         params['Ly'] = float(s)
             elif 'string_name' in line:
                 split_line = line.split()
-                params['SimName'] = split_line[2]
+                sname = split_line[2]
+                sname = sname.strip('"')
+                print("sname={}".format(sname))
+                params['SimName'] = sname
     params['Ds'] = 0.5*params['Lx']/params['Nx']
     return params
 
@@ -254,7 +257,7 @@ class Svg():
 
 class SvgObject():
     """
-    Class to hold an object existing in an SVG. It includes fiunctions to print
+    Class to hold an object existing in an SVG. It includes functions to print
     an oject with its attribute dictionary as well as a generic getter to access
     the attributes from the internal dictionary.
     """
