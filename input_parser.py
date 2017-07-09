@@ -21,10 +21,13 @@ def fetch_input_params(fname, params={}):
         for line in inFile:
             if (line[0].isalpha()) and ('=' in line):
                 parts = line.split()
-                try:
-                    params[parts[0]] = float(parts[2])
-                except:
-                    params[parts[0]] = parts[2]
+                if parts[0]=="string_name":
+                    params[parts[0]] = parts[2].strip('"')
+                else:
+                    try:
+                        params[parts[0]] = float(parts[2])
+                    except:
+                        params[parts[0]] = parts[2]
     params['Ds'] = 0.5*params['Lx']/params['Nx'] # ideal distance between
                                                  # Lagrangian pts
     return params
