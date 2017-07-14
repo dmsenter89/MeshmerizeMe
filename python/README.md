@@ -1,4 +1,4 @@
-# MeshmerizeMe
+# MeshmerizeMe (Python)
 MeshmerizeMe is a python script intended to convert SVG files into
 geometry files for use with IBAMR and IB2D. Also includes the ability to
 plot .vertex files to verify the geometry looks as intended.
