@@ -1,0 +1,15 @@
+setup.py
+MeshmerizeMe/__init__.py
+MeshmerizeMe/geo_obj.py
+MeshmerizeMe/input_parser.py
+MeshmerizeMe/svg_parser.py
+MeshmerizeMe/uidesign.py
+MeshmerizeMe/version.py
+MeshmerizeMe.egg-info/PKG-INFO
+MeshmerizeMe.egg-info/SOURCES.txt
+MeshmerizeMe.egg-info/dependency_links.txt
+MeshmerizeMe.egg-info/requires.txt
+MeshmerizeMe.egg-info/top_level.txt
+MeshmerizeMe/scripts/ContourizeMe
+MeshmerizeMe/scripts/MeshmerizeMe
+MeshmerizeMe/scripts/PlotVertices
