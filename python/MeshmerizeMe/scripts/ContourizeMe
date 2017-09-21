@@ -1,5 +1,14 @@
 #!/usr/bin/env python
 
+"""
+ContourizeMe
+
+Description:
+A Tkinter GUI for creating SVGs from manually finding contours in an image.  The user manually selects lower and upper bounds in a given
+paramaterization of pixel space (Grayscale, RGB, HSV).
+
+"""
+
 from Tkinter import *
 import matplotlib.pyplot as plt
 import tkFileDialog
@@ -292,12 +301,7 @@ def save_to_svg():
                 diameters.append(d)
                 #print d
                 si.append(i)
-            
-            
-            
-        
-            
-            
+                
         paths = []
         for b in beziers:
             x1, y1 = b[0]
@@ -346,10 +350,8 @@ def plot_beziers(plot = True, ofile = None):
     for c in contours:
         perimeter = cv2.arcLength(c,True)
         c = np.reshape(c, (len(c), 2)).astype(np.float32)
-        #print c.shape
-        c = np.append(c, c[0].reshape(1, 2), axis = 0)
 
-        #points.extend([u for u in c])
+        c = np.append(c, c[0].reshape(1, 2), axis = 0)
         
         x = c[:,0]
         y = c[:,1]
@@ -379,6 +381,124 @@ def plot_beziers(plot = True, ofile = None):
 
             plt.show()
             plt.close()
+
+def quit_all():
+    root.quit()
+    root.destroy()
+    plt.close()
+    sys.exit()
+    
+def callback(e = None):
+    global contours
+    global pp
+    global t1
+    global panel
+    global i
+
+    mim = cv2.cvtColor(copy.copy(im), cv2.COLOR_BGR2RGB)
+    pp = float(w4.get())
+
+    if blurVar.get() == 1:
+        try:
+            if pamVar.get() == 'Grayscale':
+                tothresh = cv2.blur(imgray, (int(kernelSize.get()), int(kernelSize.get())))
+                ix = 0
+            elif pamVar.get() == 'RGB':
+                tothresh = cv2.blur(im, (int(kernelSize.get()), int(kernelSize.get())))
+                ix = 1
+            elif pamVar.get() == 'HSV':
+                tothresh = cv2.blur(hsv_im, (int(kernelSize.get()), int(kernelSize.get())))
+                ix = 2
+            mim = cv2.blur(mim, (int(kernelSize.get()), int(kernelSize.get())))
+        except:
+            tothresh = None
+    else:
+        if pamVar.get() == 'Grayscale':
+            tothresh = imgray
+            ix = 0
+        elif pamVar.get() == 'RGB':
+            tothresh = im
+            ix = 1
+        elif pamVar.get() == 'HSV':
+            tothresh = hsv_im
+            ix = 2
+
+    if tothresh is not None:
+        # Grab the chosen bounds
+        r1 = int(np.round(w1.get()))
+        r2 = int(np.round(w2.get()))
+
+        b1 = int(np.round(w5.get()))
+        b2 = int(np.round(w6.get()))
+
+        g1 = int(np.round(w7.get()))
+        g2 = int(np.round(w8.get()))
+
+        # Bound according to the chosen paramaterization
+        if pamVar.get() == 'Grayscale':
+            ret,thresh = cv2.threshold(tothresh,r1,r2,0)
+        elif pamVar.get() == 'RGB':
+            thresh = cv2.inRange(tothresh, (b1, g1, r1), (b2, g2, r2))
+        elif pamVar.get() == 'HSV':
+            thresh = cv2.inRange(tothresh, (r1, g1, b1), (r2, g2, b2))
+
+        # contour finding with OpenCV 2 or 3
+        _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+        if len(_) == 3:
+            _, contours, hierarchy = _
+        else:
+            contours, hierarchy = _
+            
+        contours = sorted(contours, key = len, reverse = True)
+        
+        if len(contours) > int(np.round(w3.get())):
+            contours = contours[:int(np.round(w3.get()))]
+        
+        cv2.drawContours(mim, contours, -1, color=(0,255,0), thickness=3)
+
+        img = Image.fromarray(cv2.resize(mim, (0,0), fx = scale, fy = scale))
+        img = ImageTk.PhotoImage(img)
+
+        panel.itemconfig(i, image = img)
+        panel.image = img
+
+def take_in_sample(event):
+    global samples
+    
+    canvas = event.widget
+    x = canvas.canvasx(event.x)
+    y = canvas.canvasy(event.y)
+    
+    samples['In'][pamVar.get()].append(imgray[int(y/scale), int(x/scale)])
+
+    callback(event)
+
+def take_out_sample(event):
+    global samples
+    
+    canvas = event.widget
+    x = canvas.canvasx(event.x)
+    y = canvas.canvasy(event.y)
+
+    samples['Out'][pamVar.get()].append(imgray[int(y/scale), int(x/scale)])
+
+    callback(event)
+
+def clear_sample(event):
+    global samples
+    
+    samples = dict()
+    samples['In'] = dict()
+    samples['Out'] = dict()
+    
+    samples['In']['RGB'] = list()
+    samples['In']['HSV'] = list()
+    samples['In']['Grayscale'] = list()
+
+    samples['Out']['RGB'] = list()
+    samples['Out']['HSV'] = list()
+    samples['Out']['Grayscale'] = list()
             
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="allows the user to slide to a values for 8-bit pixel thresholding")
@@ -401,7 +521,6 @@ if __name__ == '__main__':
     print 'Working with image of size {0} x {1}'.format(im.shape[1], im.shape[0])
 
     scale = float(args.scale)
-    #print im
 
     samples = dict()
     samples['In'] = dict()
@@ -418,271 +537,91 @@ if __name__ == '__main__':
     if im is None:
         # read with the alternate method
         im = imread(args.image)
-        # print '16-bit image detected'
-        # convert the image array to 8-bit grayscale
-        # imgray = im.astype(np.uint8)
         
         imgray = map_uint16_to_uint8(im)
         im = cv2.cvtColor(imgray, cv2.COLOR_GRAY2BGR)
     elif len(im.shape) == 3:
-        #print '8-bit image detected'
         imgray = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
     else:
         imgray = im
+        im = cv2.cvtColor(imgray, cv2.COLOR_GRAY2BGR)
+
+    # Keep the three paramaterizations in memory
+    # -----------------------
+    # gray = imgray
+    # RGB = im
+    # HSV = hsv_im
         
     mim = cv2.cvtColor(copy.copy(im), cv2.COLOR_BGR2RGB)
-    # BGR = im
-
-    # HSV = hsv_im
     hsv_im = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
-    
-    #imgray = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
-    # threshold 
+
     ret,thresh = cv2.threshold(imgray,127,255,0)
     _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
+    # OpenCV 2 fix
     if len(_) == 3:
         _, contours, hierarchy = _
     else:
         contours, hierarchy = _
     
     contours = sorted(contours, key = len, reverse = True)
-    #im = cv2.imread(os.path.join(args.idir, image))
     for j in range(1):
         cv2.drawContours(mim, contours, j, color=(0,0,0), thickness=-1)
-
-    bounds = np.zeros((3,6))
-
-    def take_in_sample(event):
-        global samples
-        
-        canvas = event.widget
-        x = canvas.canvasx(event.x)
-        y = canvas.canvasy(event.y)
-
-        
-        samples['In'][pamVar.get()].append(imgray[int(y/scale), int(x/scale)])
-
-        update_norms(pamVar.get())
-
-        callback(event)
-
-    def take_out_sample(event):
-        global samples
-        
-        canvas = event.widget
-        x = canvas.canvasx(event.x)
-        y = canvas.canvasy(event.y)
-
-        samples['Out'][pamVar.get()].append(imgray[int(y/scale), int(x/scale)])
-
-        update_norms(pamVar.get())
-
-        callback(event)
-
-        callback(event)
-
-    def clear_sample(event):
-        samples = dict()
-        samples['In'] = dict()
-        samples['Out'] = dict()
-        
-        samples['In']['RGB'] = list()
-        samples['In']['HSV'] = list()
-        samples['In']['Grayscale'] = list()
-
-        samples['Out']['RGB'] = list()
-        samples['Out']['HSV'] = list()
-        samples['Out']['Grayscale'] = list()
-
-        print 'Cleared...'
-
-    def update_norms(mode):
-        global bounds
-
-        if mode == 'Grayscale':
-            if len(samples['In']['Grayscale']) > 5:
-                mu = np.mean(np.array(samples['In']['Grayscale']))
-                std = np.std(np.array(samples['In']['Grayscale']))
-
-                z = -norm.ppf((1. - float(normalBound.get())/100.) / 2.)
-                bounds[0,[0,3]] = [mu - z*std, mu + z*std]
-        elif mode == 'RGB':
-            if len(samples['In']['RGB']) > 5:
-                mu = np.mean(np.array(samples['In']['RGB']), axis = 0)
-                std = np.std(np.array(samples['In']['RGB']), axis = 0)
-
-                z = -norm.ppf((1. - float(normalBound.get())/100.) / 2.)
-                bounds[1,:3] = mu - z*std
-                bounds[1,3:] = mu + z*std
-
-        elif mode == 'HSV':
-            if len(samples['In']['HSV']) > 5:
-                mu = np.mean(np.array(samples['In']['HSV']), axis = 0)
-                std = np.std(np.array(samples['In']['HSV']), axis = 0)
-
-                z = -norm.ppf((1. - float(normalBound.get())/100.) / 2.)
-                bounds[2,:3] = mu - z*std
-                bounds[2,3:] = mu + z*std
-
             
-
-        #print bounds
-            
-        
+    # Create the window
     root = Tk()
     root.resizable(width=False, height=False)
+
+    # Load the image
     img = Image.fromarray(cv2.resize(mim, (0,0), fx = scale, fy = scale))
     img = ImageTk.PhotoImage(img)
-    
+
+    # blit to the panel
     panel = Canvas(root, width = im.shape[1] * scale, height = im.shape[0] * scale)
     panel.grid(row = 0, column = 0, rowspan = 5, columnspan = 6, sticky = 'W')
     i = panel.create_image((im.shape[1] * (scale / 2.), im.shape[0] * (scale / 2.)), image = img)
 
+    # Functions for taking pixel samples
+    # I'll keep these around for now
     panel.tag_bind(i, '<ButtonPress-1>', take_in_sample)
     panel.tag_bind(i, '<Control-1>', take_out_sample)
     root.bind('<Control-c>', clear_sample)
 
-    def quit_all():
-        root.quit()
-        root.destroy()
-        plt.close()
-        sys.exit()
-        
-    def callback(e = None):
-        global contours
-        global pp
-        global t1
-        global panel
-        global i
-
-        mim = cv2.cvtColor(copy.copy(im), cv2.COLOR_BGR2RGB)
-
-        pp = float(w4.get())
-
-        if blurVar.get() == 1:
-            try:
-                if pamVar.get() == 'Grayscale':
-                    tothresh = cv2.blur(imgray, (int(kernelSize.get()), int(kernelSize.get())))
-                    ix = 0
-                elif pamVar.get() == 'RGB':
-                    tothresh = cv2.blur(im, (int(kernelSize.get()), int(kernelSize.get())))
-                    ix = 1
-                elif pamVar.get() == 'HSV':
-                    tothresh = cv2.blur(hsv_im, (int(kernelSize.get()), int(kernelSize.get())))
-                    ix = 2
-                mim = cv2.blur(mim, (int(kernelSize.get()), int(kernelSize.get())))
-            except:
-                pass
-        else:
-            if pamVar.get() == 'Grayscale':
-                tothresh = imgray
-                ix = 0
-            elif pamVar.get() == 'RGB':
-                tothresh = im
-                ix = 1
-            elif pamVar.get() == 'HSV':
-                tothresh = hsv_im
-                ix = 2
-        
-        
-        r1 = int(np.round(w1.get()))
-        r2 = int(np.round(w2.get()))
-
-        b1 = int(np.round(w5.get()))
-        b2 = int(np.round(w6.get()))
-
-        g1 = int(np.round(w7.get()))
-        g2 = int(np.round(w8.get()))
-        
-        if methodVar.get() == 'Normal distribution':
-            bounds[np.where(bounds > 255)] = 255.
-            bounds[np.where(bounds < 0)] = 0.
-            if len(samples['In'][pamVar.get()]) > 5:
-                r1, g1, b1, r2, g2, b2 = np.round(bounds[ix])
-                
-        #print r1, r2, b1, b2, g1, g2
-
-        try:
-            if pamVar.get() == 'Grayscale':
-                ret,thresh = cv2.threshold(tothresh,r1,r2,0)
-            elif pamVar.get() == 'RGB':
-                thresh = cv2.inRange(tothresh, (b1, g1, r1), (b2, g2, r2))
-            elif pamVar.get() == 'HSV':
-                thresh = cv2.inRange(tothresh, (r1, g1, b1), (r2, g2, b2))  
-
-            _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-
-            if len(_) == 3:
-                _, contours, hierarchy = _
-            else:
-                contours, hierarchy = _            
-            contours = sorted(contours, key = len, reverse = True)
-            #im = cv2.imread(os.path.join(args.idir, image))
-            if len(contours) > int(np.round(w3.get())):
-                contours = contours[:int(np.round(w3.get()))]
-            
-            cv2.drawContours(mim, contours, -1, color=(0,255,0), thickness=3)
-
-            img = Image.fromarray(cv2.resize(mim, (0,0), fx = scale, fy = scale))
-            img = ImageTk.PhotoImage(img)
-
-            panel.itemconfig(i, image = img)
-            panel.image = img
-        except:
-            pass
-
-            
-
-    # export as SVG
-    # no smoothing for now
-    # compute diameter from data
-
+    # variables tied to the GUI
     blurVar = IntVar()
     kernelSize = StringVar()
     kernelSize.set('5')
+    
     methodVar = StringVar()
     methodVar.set('Manual')
 
-    normalBound = StringVar()
-    normalBound.set('95')
-
     pamVar = StringVar()
     pamVar.set('Grayscale')
-
-    C = StringVar()
-    C.set(1.0)
-
-    gamma = StringVar()
-    gamma.set(1.0)
     
     kernelSize.trace("w", lambda name, index, mode, kernelSize=kernelSize: callback(kernelSize))
      
     root.protocol('WM_DELETE_WINDOW', quit_all)
-
-    group = LabelFrame(root, text="Settings", padx=5, pady=5,  fg = '#56A0D3')
-    group.grid(row = 7, column = 6, rowspan = 4, sticky = 'NSEW', columnspan  = 6, padx = 10, pady = 10)
     
     w1 = Scale(root, from_=0, to=255, orient=VERTICAL, command = callback)
-    w1.set(100)
-    w1.grid(row = 0, column = 6, padx = 10, pady = 5, rowspan = 6, sticky = 'NS')
+    w1.set(0)
+    w1.grid(row = 0, column = 6, padx = 10, pady = 5, rowspan = 10, sticky = 'NS')
     w2 = Scale(root, from_=0, to=255, orient=VERTICAL, command = callback)
     w2.set(255)
-    w2.grid(row = 0, column = 7,  padx = 10, pady = 5, rowspan = 6, sticky = 'NS')
+    w2.grid(row = 0, column = 7,  padx = 10, pady = 5, rowspan = 10, sticky = 'NS')
 
     w5 = Scale(root, from_=0, to=255, orient=VERTICAL, command = callback)
-    w5.set(100)
-    w5.grid(row = 0, column = 8, padx = 10, pady = 5, rowspan = 6, sticky = 'NS')
+    w5.set(0)
+    w5.grid(row = 0, column = 8, padx = 10, pady = 5, rowspan = 10, sticky = 'NS')
     w6 = Scale(root, from_=0, to=255, orient=VERTICAL, command = callback)
     w6.set(255)
-    w6.grid(row = 0, column = 9,  padx = 10, pady = 5, rowspan = 6, sticky = 'NS')
+    w6.grid(row = 0, column = 9,  padx = 10, pady = 5, rowspan = 10, sticky = 'NS')
 
     w7 = Scale(root, from_=0, to=255, orient=VERTICAL, command = callback)
-    w7.set(100)
-    w7.grid(row = 0, column = 10, padx = 10, pady = 5, rowspan = 6, sticky = 'NS')
+    w7.set(0)
+    w7.grid(row = 0, column = 10, padx = 10, pady = 5, rowspan = 10, sticky = 'NS')
     w8 = Scale(root, from_=0, to=255, orient=VERTICAL, command = callback)
     w8.set(255)
-    w8.grid(row = 0, column = 11,  padx = 10, pady = 5, rowspan = 6, sticky = 'NS')
+    w8.grid(row = 0, column = 11,  padx = 10, pady = 5, rowspan = 10, sticky = 'NS')
 
     Label(root, text = 'Number of contours to show:').grid(row = 5, padx = 10)
     w3 = Scale(root, from_=1, to=10, orient=HORIZONTAL, command = callback)
@@ -699,28 +638,9 @@ if __name__ == '__main__':
     
     Entry(root, textvariable = kernelSize, width = 5).grid(row = 9, padx = 175, sticky = 'W')
 
-    Label(group, text = 'Normal confidence bound (0 to 100):').grid(row = 0, column = 0, padx = 5, pady = 5, sticky = 'W')
-    Entry(group, textvariable = normalBound, width = 5).grid(row = 0, column = 1, padx = 5, pady = 5, sticky = 'W')
-
-    Label(group, text = 'C:').grid(row = 1, column = 0, padx = 5, pady = 5, sticky = 'W')
-    Entry(group, textvariable = C, width = 5).grid(row = 1, column = 1, padx = 5, pady = 5, sticky = 'W')
-
-    Label(group, text = 'Gamma:').grid(row = 2, column = 0, padx = 5, pady = 5, sticky = 'W')
-    Entry(group, textvariable = gamma, width = 5).grid(row = 2, column = 1, padx = 5, pady = 5, sticky = 'W')
-
-    svc = Button(group, text = "Compute SVC", command = save_to_svg)
-    svc.grid(column = 2, row = 0, padx = 10, pady = 5, sticky = 'NSEW', rowspan = 3)
-
-    svc_grid = Button(group, text = "Compute SVC with gridsearch", command = save_to_svg)
-    svc_grid.grid(column = 3, row = 0, padx = 10, pady = 5, sticky = 'NSEW', rowspan = 3)
-
-    Label(root, text = 'Parameterization:').grid(row = 6, column = 6, padx = 10, pady = 10, sticky = 'W', columnspan = 6)
+    Label(root, text = 'Parameterization:').grid(row = 10, column = 6, padx = 10, pady = 10, sticky = 'W', columnspan = 6)
     method = OptionMenu(root, pamVar, 'Grayscale', 'RGB', 'HSV', command = callback)
-    method.grid(row = 6, column = 6, padx = 150, pady = 10, sticky = 'W', columnspan = 6)
-
-    Label(root, text = 'Thresholding method:').grid(row = 6, column = 6, padx = 125, pady = 10, sticky = 'E', columnspan = 6)
-    method = OptionMenu(root, methodVar, 'Manual', 'Normal distribution', 'SVC')
-    method.grid(row = 6, column = 6, padx = 10, pady = 10, columnspan = 6, sticky = 'E')
+    method.grid(row = 10, column = 6, padx = 150, pady = 10, sticky = 'W', columnspan = 6)
     
     save = Button(root, text = "Save to SVG", command = save_to_svg)
     save.grid(row = 10, padx = 10, pady = 5, sticky = 'W')
