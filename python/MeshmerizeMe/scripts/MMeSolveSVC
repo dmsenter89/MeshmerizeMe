@@ -1,0 +1,99 @@
+import numpy as np
+import argparse as ap
+import logging
+import pickle
+import cv2
+
+from sklearn.grid_search import GridSearchCV
+from sklearn import svm
+
+if __name__ == '__main__':
+    parser = ap.ArgumentParser()
+    parser.add_argument("ifile", default = "None")
+    parser.add_argument("--ofile", default = "svc.pkl")
+    parser.add_argument("--verbose", action = "store_true")
+    parser.add_argument("--n_passes", default = "1")
+
+    args = parser.parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+        logging.debug("running in verbose mode")
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    image, points = pickle.load(open(args.ifile))
+
+    window_size = 0
+
+    image = cv2.imread(image)
+
+    X = []
+    Y = []
+
+    # get the foreground points
+    fg = points['Foreground']
+
+    nz = list(set(fg.nonzero()[0]))
+
+    for ix in nz:
+        
+        x, y = map(int, list(fg[ix].toarray()[0]))
+        
+        y = image.shape[0] - y
+
+        x = image[y - window_size:y + window_size + 1, x - window_size:x + window_size + 1].flatten().astype(np.float32)
+        if len(x) != 0:
+
+            X.append(x)
+            
+            Y.append(1.)
+
+    # get the background points
+    bg = points['Background']
+
+    nz = list(set(bg.nonzero()[0]))
+
+    for ix in nz:
+        x, y = map(int, list(bg[ix].toarray()[0]))
+        y = image.shape[0] - y
+
+        x = image[y - window_size:y + window_size + 1, x - window_size:x + window_size + 1].flatten().astype(np.float32)
+
+        if len(x) != 0:
+
+            X.append(x)
+            Y.append(0.)
+
+
+    X = np.array(X)
+    Y = np.array(Y)
+
+    print X.shape, Y.shape
+
+    gamma = np.power(2., range(-15, 4))
+    C = np.power(2., range(-5, 16))
+
+    print gamma, C
+    
+    # Use the log-2 grid recommended by http://www.csie.ntu.edu.tw/~cjlin/papers/guide/guide.pdf
+    
+    # for an RBF (radial basis function) kernel function
+    parameters = {'kernel':['rbf'], 'C': C, 'gamma': gamma, 'class_weight': ['balanced']}
+    
+    svr = svm.SVC()
+    clf = GridSearchCV(svr, parameters, verbose = 2)
+
+    clf.fit(X, Y)
+
+    pickle.dump(clf, open(args.ofile, 'w'))
+
+    
+
+    
+
+    
+
+    
+    
+
