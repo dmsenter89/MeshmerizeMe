@@ -1,6 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+MMeSamplePixels
+---------------
+
+Description:
+Displays an image and allows users to click on the foreground and the background
+for the purpose of sampling regions to later solve and SVC (Support Vector Classifier)
+Making a model of the foreground and background in a set of images is an optional
+part of the workflow included in MeshmerizeMe to estimate contours as 2D meshes.
+
+Example:
+
+MMeSamplePixels leaf.jpg
+
+Args:
+    image: the image to be sampled. Any format capable of being read by OpenCV is OK.
+
+"""
+
 from __future__ import absolute_import
 import six.moves.tkinter_tkfiledialog as tkFileDialog
 import six.moves.tkinter_messagebox
@@ -360,12 +379,12 @@ class SampleWindow(pyglet.window.Window):
                 currentTrack = trackList[0]
             
             self.changeTrack(oldTrack)
-        # skips one frame ahead
+        # skips one index ahead
         elif symbol == key.F and (modifiers == 0 or modifiers == 16):
             if self.current + 1 <= self.end:
                 self.current += 1
                 self.changeMarker()
-        # skips one frame behind
+        # skips one index behind
         elif symbol == key.B and (modifiers == 0 or modifiers == 16):
             if self.current - 1 > 0:
                 self.current -= 1
@@ -390,6 +409,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    # initate the sampling Pyglet window
     window = SampleWindow(args.image)
 
+    # run the mainloop
     pyglet.app.run()
