@@ -7,7 +7,7 @@ setup(
     name='MeshmerizeMe',
     version='1.0.dev0',
     packages=['MeshmerizeMe'],
-    scripts=['MeshmerizeMe/scripts/MeshmerizeMe', 'MeshmerizeMe/scripts/ContourizeMe', 'MeshmerizeMe/scripts/PlotVertices'],
+    scripts=['MeshmerizeMe/scripts/MeshmerizeMe', 'MeshmerizeMe/scripts/ContourizeMe'],
     # dependencies
     install_requires=[
         "numpy >= 1.9.1",

@@ -5,11 +5,11 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import sys, os
 import argparse
-import uidesign as ui
-import svg_parser
-from input_parser import fetch_input_params
-import geo_viewer
-from geo_obj import writeFile
+import MeshmerizeMe.uidesign as ui
+import MeshmerizeMe.svg_parser
+from MeshmerizeMe.input_parser import fetch_input_params
+import MeshmerizeMe.geo_viewer
+from MeshmerizeMe.geo_obj import writeFile
 
 class App(QMainWindow, ui.Ui_MainWindow):
     def __init__(self, parent=None):
