@@ -6,9 +6,9 @@ from PyQt5.QtWidgets import *
 import sys, os
 import argparse
 import MeshmerizeMe.uidesign as ui
-import MeshmerizeMe.svg_parser
+import MeshmerizeMe.svg_parser as svg_parser
 from MeshmerizeMe.input_parser import fetch_input_params
-import MeshmerizeMe.geo_viewer
+import MeshmerizeMe.geo_viewer as geo_viewer
 from MeshmerizeMe.geo_obj import writeFile
 
 class App(QMainWindow, ui.Ui_MainWindow):
