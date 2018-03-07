@@ -5,6 +5,7 @@ MeshmerizeMe/geo_obj.py
 MeshmerizeMe/geo_viewer.py
 MeshmerizeMe/input_parser.py
 MeshmerizeMe/svg_parser.py
+MeshmerizeMe/tools.py
 MeshmerizeMe/uidesign.py
 MeshmerizeMe/version.py
 MeshmerizeMe.egg-info/PKG-INFO
