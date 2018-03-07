@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 """
 ContourizeMe
@@ -9,8 +10,10 @@ paramaterization of pixel space (Grayscale, RGB, HSV).
 
 """
 
+from MeshmerizeMe import get_diameters, Chanvese, Contours
+
 from Tkinter import *
-import matplotlib.pyplot as plt
+import pickle
 import tkFileDialog
 import cv2
 import numpy as np
@@ -26,88 +29,30 @@ from scipy import interpolate
 from svgpathtools import CubicBezier, wsvg
 from scipy.spatial import KDTree
 import pandas as pd
+from scipy.interpolate import UnivariateSpline
+from MeshmerizeMe import get_diameters, Chanvese, Contours
+
+print 'Got this many imports...'
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.backend_bases import MouseEvent
 from matplotlib.figure import Figure
 
+print 'Imported strange matplotlib stuff...'
+
 from scipy.stats import norm
+import scipy.ndimage as nd
 
-def image2pixelarray(filepath):
-    """
-    Parameters
-    ----------
-    filepath : str
-        Path to an image file
+import numpy as np
+import scipy.ndimage as nd
+import matplotlib.pyplot as plt
 
-    Returns
-    -------
-    list
-        A list of lists which make it simple to access the greyscale value by
-        im[y][x]
-    """
-    im = Image.open(filepath).convert('L')
-    (width, height) = im.size
-    greyscale_map = list(im.getdata())
-    greyscale_map = np.array(greyscale_map)
-    greyscale_map = greyscale_map.reshape((height, width))
-    return greyscale_map
+import Pmw
+import skimage
 
-def get_beziers(tck, per = True):
-    """Convert a parametric b-spline into a sequence of Bezier curves of the same degree.
+eps = np.finfo(float).eps
 
-    Inputs:
-    tck : (t,c,k) tuple of b-spline knots, coefficients, and degree returned by splprep.
-    per : if tck was created as a periodic spline, per *must* be true, else per *must* be false.
-
-    Output:
-    A list of Bezier curves of degree k that is equivalent to the input spline. 
-    Each Bezier curve is an array of shape (k+1,d) where d is the dimension of the
-    space; thus the curve includes the starting point, the k-1 internal control 
-    points, and the endpoint, where each point is of d dimensions.
-    """
-    t,c,k = tck
-    t = asarray(t)
-    try:
-        c[0][0]
-    except:
-        # I can't figure out a simple way to convert nonparametric splines to 
-        # parametric splines. Oh well.
-        raise TypeError("Only parametric b-splines are supported.")
-    new_tck = tck
-    if per:
-        # ignore the leading and trailing k knots that exist to enforce periodicity 
-        knots_to_consider = unique(t[k:-k])
-    else:
-        # the first and last k+1 knots are identical in the non-periodic case, so
-        # no need to consider them when increasing the knot multiplicities below
-        knots_to_consider = unique(t[k+1:-k-1])
-    # For each unique knot, bring it's multiplicity up to the next multiple of k+1
-    # This removes all continuity constraints between each of the original knots, 
-    # creating a set of independent Bezier curves.
-    desired_multiplicity = k+1
-    for x in knots_to_consider:
-        current_multiplicity = sum(t == x)
-        remainder = current_multiplicity%desired_multiplicity
-    if remainder != 0:
-        # add enough knots to bring the current multiplicity up to the desired multiplicity
-        number_to_insert = desired_multiplicity - remainder
-        new_tck = insert(x, new_tck, number_to_insert, per)
-    tt,cc,kk = new_tck
-    # strip off the last k+1 knots, as they are redundant after knot insertion
-    bezier_points = np.transpose(cc)[:-desired_multiplicity]
-    if per:
-        # again, ignore the leading and trailing k knots
-        bezier_points = bezier_points[k:-k]
-    # group the points into the desired bezier curves
-    return np.array_split(bezier_points, len(bezier_points) / desired_multiplicity, axis = 0)
-
-"""
-Creates a Tkinter interface that allows one to pick a 8-bit pixel value for the
-thresholding mask.
-
-Takes either an image or reads the first frame from a movie.
-"""
+# To add into dependencies: progressbar, Pmw
 
 def map_uint16_to_uint8(img, lower_bound=None, upper_bound=None):
     '''
@@ -157,218 +102,850 @@ from scipy.optimize import minimize
 from scipy.spatial.distance import euclidean
 import progressbar
 
-beziers = None
-outs = None
-tcks = []
-pp = 5
+import random
 
-t1 = None
+class Transformer(object):
+    def __init__(self, options = []):
+        self.options = options
 
+    def average_blur(self, im, kernel = (5, 5)):
+        return cv2.blur(im, kernel)
 
-def brightness(dd, out):
-    out[np.where((out[:,0].astype(np.int32) > imgray.shape[1] - 1) | (out[:,1].astype(np.int32) > imgray.shape[0] - 1))] = np.zeros(2)
-    
-    vals = np.array([imgray[int(np.floor(uv[1])) - 1, int(np.floor(uv[0])) - 1] for uv in out], dtype = np.float32)
+    def gaussian_blur(self, im, kernel = (5, 5)):
+        return cv2.GaussianBlur(im, kernel, 0)
 
-    maxx = np.max(out[:,0])
-    maxy = np.max(out[:,1])
-    minx = np.min(out[:,0])
-    miny = np.min(out[:,1])
-    
-    counts = np.zeros(vals.shape)
+    def median_blur(self, im, kernel = 5):
+        return cv2.medianBlur(im, 5)
 
-    for dp in np.linspace(0.1, 5., 6):
-        to_move = dd*dp
-        nout = to_move + out
+    def bilateral_filter(self, im, d = 9, sigmaColor = 75, sigmaSpace = 75):
+        return cv2.bilateralFilter(im, d, sigmaColor, sigmaSpace)
 
-        i = np.where((nout[:,0].astype(np.int32) > imgray.shape[1] - 1) | (nout[:,1].astype(np.int32) > imgray.shape[0] - 1))
-        nout[i] = np.array([np.nan, np.nan])
-        _ = np.zeros(vals.shape)
-        _[list(set(range(len(vals))).difference(i[0]))] = np.array([imgray[int(uv[1]), int(uv[0])] for uv in nout if not np.isnan(uv[0])])
+    def adaptive_gaussian_threshold(self, im, blockSize = 11):
+        return cv2.adaptiveThreshold(im,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,cv.THRESH_BINARY,blockSize,2).astype(np.uint8)*255
 
+    def otsu_threshold(self):
+        return cv2.threshold(im,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU).astype(np.uint8)*255
 
-        #print _
-        counts[np.where((nout[:,0].astype(np.int32) < imgray.shape[1] - 1) | (nout[:,1].astype(np.int32) < imgray.shape[0] - 1))] += 1.
+    def morph_transform(self, im, transform = 'Erode', kernel = (5,5)):
+        kernel = np.ones(kernel, dtype = np.uint8)
+
+        if transform == 'Erode':
+            return cv2.erode(im, kernel, iterations = 1)
+        elif transform == 'Dilate':
+            return cv2.dilate(im, kernel, iterations = 1)
+        elif transform == 'Closing':
+            return cv2.morphologyEx(im, cv2.MORPH_CLOSE, kernel)
+        elif transform == 'Opening':
+            return cv2.morphologyEx(im, cv2.MORPH_OPEN, kernel)
+
+    def transform(self, ret):
+        for o in self.options:
+            if o[0] == 'Average Blur':
+                ret = self.average_blur(ret, **o[1])
+            elif o[0] == 'Gaussian Blur':
+                ret = self.gaussian_blur(ret, **o[1])
+            elif o[0] == 'Median Blur':
+                ret = self.median_blur(ret, **o[1])
+            elif o[0] == 'Bilateral Filter':
+                ret = self.bilateral_filter(ret, **o[1])
+            elif o[0] == 'Adaptive Gaussian Threshold':
+                ret = self.adaptive_gaussian_threshold(ret, **o[1])
+            elif o[0] == 'Otsu Threshold':
+                ret = self.otsu_threshold(ret, **o[1])
+            elif o[0] == 'Morphological Transform':
+                ret = self.morph_transform(ret, **o[1])
+
+        return ret
+
+class AutoScrollbar(Scrollbar):
+    ''' A scrollbar that hides itself if it's not needed.
+        Works only if you use the grid geometry manager '''
+    def set(self, lo, hi):
+        if float(lo) <= 0.0 and float(hi) >= 1.0:
+            self.grid_remove()
+        else:
+            self.grid()
+            Scrollbar.set(self, lo, hi)
+
+    def pack(self, **kw):
+        raise TclError('Cannot use pack with this widget')
+
+    def place(self, **kw):
+        raise TclError('Cannot use place with this widget')
+
+class Zoom_Advanced(Frame):
+    ''' Advanced zoom of the image '''
+    def __init__(self, mainframe, path):
+        ''' Initialize the main Frame '''
+        Frame.__init__(self, master=mainframe)
+        self.master.title('Zoom with mouse wheel')
+        self.master.protocol('WM_DELETE_WINDOW', self.close)
+        # Vertical and horizontal scrollbars for canvas
+        vbar = AutoScrollbar(self.master, orient='vertical')
+        hbar = AutoScrollbar(self.master, orient='horizontal')
+        vbar.grid(row=0, column=1, sticky='ns')
+        hbar.grid(row=1, column=0, sticky='we')
+        # Create canvas and put image on it
+        self.canvas = Canvas(self.master, highlightthickness=0,
+                                xscrollcommand=hbar.set, yscrollcommand=vbar.set)
+        self.canvas.grid(row=0, column=0, sticky='nswe')
+        self.canvas.update()  # wait till canvas is created
+        vbar.configure(command=self.scroll_y)  # bind scrollbars to the canvas
+        hbar.configure(command=self.scroll_x)
+        # Make the canvas expandable
+        self.master.rowconfigure(0, weight=1)
+        self.master.columnconfigure(0, weight=1)
+        # Bind events to the Canvas
+        self.canvas.bind('<Configure>', self.show_image)  # canvas is resized
+        self.canvas.bind('<ButtonPress-1>', self.move_from)
+        self.canvas.bind('<B1-Motion>',     self.move_to)
+        self.canvas.bind('<MouseWheel>', self.wheel)  # with Windows and MacOS, but not Linux
+        self.canvas.bind('<Button-5>',   self.wheel)  # only with Linux, wheel scroll down
+        self.canvas.bind('<Button-4>',   self.wheel)  # only with Linux, wheel scroll up
+        self.image = Image.open(path)  # open image
+        self.width, self.height = self.image.size
+        self.imscale = 1.0  # scale for the canvaas image
+        self.delta = 1.3  # zoom magnitude
+        # Put image into container rectangle and use it to set proper coordinates to the image
+        self.container = self.canvas.create_rectangle(0, 0, self.width, self.height, width=0)
         
-        vals += _.astype(np.float32)
+        self.show_image()
 
-    i = np.where(counts != 0.)
-    vals[i] = vals[i] / counts
-    vals[np.where((out[:,0] < minx + 10) | (out[:,1] > maxx - 5))] = np.nan
-    
-    return vals
+    def scroll_y(self, *args, **kwargs):
+        ''' Scroll canvas vertically and redraw the image '''
+        self.canvas.yview(*args, **kwargs)  # scroll vertically
+        self.show_image()  # redraw the image
 
-def cubic_smooth_bezier(p, t, d = 0):
-    if d == 0:
-        return (1. - t)**3*p[0]  + 3.*(1. - t)**2*t*p[0] + 3*(1. - t)*t**2*p[1] + t**3*p[2]
-    elif d == 1:
-        return 6.*(1. - t)*t*(p[1] - p[0]) + 3.*t**2*(p[2] - p[1])
-    elif d == 2:
-        return 6.*(1. - t)*(p[1] - 2.*p[0] + p[0]) + 6.*t*(p[2] - 2.*p[1] + p[0])
+    def scroll_x(self, *args, **kwargs):
+        ''' Scroll canvas horizontally and redraw the image '''
+        self.canvas.xview(*args, **kwargs)  # scroll horizontally
+        self.show_image()  # redraw the image
+
+    def move_from(self, event):
+        ''' Remember previous coordinates for scrolling with the mouse '''
+        self.canvas.scan_mark(event.x, event.y)
+
+    def move_to(self, event):
+        ''' Drag (move) canvas to the new position '''
+        self.canvas.scan_dragto(event.x, event.y, gain=1)
+        self.show_image()  # redraw the image
+
+    def wheel(self, event):
+        ''' Zoom with mouse wheel '''
+        x = self.canvas.canvasx(event.x)
+        y = self.canvas.canvasy(event.y)
+
+        #print event.delta
         
-def get_rets(contours, pt):
-    rets = []
-    for c in contours:
-        rets.append(cv2.pointPolygonTest(c, tuple(pt), False))
+        bbox = self.canvas.bbox(self.container)  # get image area
+        if bbox[0] < x < bbox[2] and bbox[1] < y < bbox[3]: pass  # Ok! Inside the image
+        else: return  # zoom only inside image area
+        scale = 1.0
+        # Respond to Linux (event.num) or Windows (event.delta) wheel event
+        if event.num == 5 or event.delta < 0:  # scroll down
+            i = min(self.width, self.height)
+            if int(i * self.imscale) < 30: return  # image is less than 30 pixels
+            self.imscale /= self.delta
+            scale        /= self.delta
+        if event.num == 4 or event.delta > 00:  # scroll up
+            i = min(self.canvas.winfo_width(), self.canvas.winfo_height())
+            if i < self.imscale: return  # 1 pixel is bigger than the visible area
+            self.imscale *= self.delta
+            scale        *= self.delta
+        self.canvas.scale('all', x, y, scale, scale)  # rescale all canvas objects
+        self.show_image()
 
-    return rets
+    def show_image(self, event=None):
+        ''' Show image on the Canvas '''
+        bbox1 = self.canvas.bbox(self.container)  # get image area
+        # Remove 1 pixel shift at the sides of the bbox1
+        bbox1 = (bbox1[0] + 1, bbox1[1] + 1, bbox1[2] - 1, bbox1[3] - 1)
+        bbox2 = (self.canvas.canvasx(0),  # get visible area of the canvas
+                 self.canvas.canvasy(0),
+                 self.canvas.canvasx(self.canvas.winfo_width()),
+                 self.canvas.canvasy(self.canvas.winfo_height()))
+        bbox = [min(bbox1[0], bbox2[0]), min(bbox1[1], bbox2[1]),  # get scroll region box
+                max(bbox1[2], bbox2[2]), max(bbox1[3], bbox2[3])]
+        if bbox[0] == bbox2[0] and bbox[2] == bbox2[2]:  # whole image in the visible area
+            bbox[0] = bbox1[0]
+            bbox[2] = bbox1[2]
+        if bbox[1] == bbox2[1] and bbox[3] == bbox2[3]:  # whole image in the visible area
+            bbox[1] = bbox1[1]
+            bbox[3] = bbox1[3]
+        self.canvas.configure(scrollregion=tuple(bbox))  # set scroll region
+        x1 = max(bbox2[0] - bbox1[0], 0)  # get coordinates (x1,y1,x2,y2) of the image tile
+        y1 = max(bbox2[1] - bbox1[1], 0)
+        x2 = min(bbox2[2], bbox1[2]) - bbox1[0]
+        y2 = min(bbox2[3], bbox1[3]) - bbox1[1]
+        if int(x2 - x1) > 0 and int(y2 - y1) > 0:  # show image if it in the visible area
+            x = min(int(x2 / self.imscale), self.width)   # sometimes it is larger on 1 pixel...
+            y = min(int(y2 / self.imscale), self.height)  # ...and sometimes not
+            image = self.image.crop((int(x1 / self.imscale), int(y1 / self.imscale), x, y))
+            imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1))))
+            imageid = self.canvas.create_image(max(bbox2[0], bbox1[0]), max(bbox2[1], bbox1[1]),
+                                               anchor='nw', image=imagetk)
+            self.canvas.lower(imageid)  # set image into background
+            self.canvas.imagetk = imagetk  # keep an extra reference to prevent garbage-collection
+    def close(self):
+        return
 
-def save_to_svg():
-    plt.clf()
-    if len(contours) > 0:
-        filename = tkFileDialog.asksaveasfilename()
-        diameters = []
+    def hide(self):
+        self.master.withdraw()
 
-        dataf = dict()
-        dataf['diameter'] = list()
-        dataf['x_midpoint'] = list()
-        dataf['y_midpoint'] = list()
+    def show(self):
+        self.master.update()
+        self.master.deiconify()
 
-        plot_beziers(plot = False)
+# popup window for the options dialog
+class optionsPopupWindow(object):
+    # options as they are are passed in upon the creation of the window
+    def __init__(self, master, smoothing_methods, smoothing_parameters, percentile, write_diameters, smoothing_method):
+        self.top=self.top=Toplevel(master)
+        self.top.resizable(width=FALSE, height=FALSE)
+        self.top.wm_title("Options")
+        self.top.protocol('WM_DELETE_WINDOW', self.cleanup)
 
-        print('Computing normal vectors and diameter...')
-        nvs = []
-        xys = []
+        self.top.bind('<Return>', self.cleanup)
+
+        params = smoothing_parameters[smoothing_methods.index(smoothing_method)]
+
+        self.smoothingMethod = StringVar(self.top)
+        self.smoothingMethod.set(smoothing_method)
+
+        general = LabelFrame(self.top, text = 'General options', padx = 5, pady = 5, fg = '#56A0D3')
+        general.grid(row = 0, padx = 10, pady = 5, sticky = EW)
+
+        self.wdiams = IntVar(self.top)
+        self.wdiams.set(0)
+
+        self.acc_p = StringVar(self.top)
+        self.acc_p.set(str(percentile))
         
-        dd = []
-        _ = []
+        if write_diameters:
+            self.wdiams.set(1)
+
+        c = Checkbutton(general, text="Compute and write diameter info", variable=self.wdiams)
+        c.grid(row = 0, padx = 5, pady = 5)
+
+        Label(general, text = 'Percentile of acceleration histogram:').grid(row = 1, padx = 5, pady = 5)
+        self.acc_p_entry = Entry(general, textvariable = self.acc_p, width = 10, bd = 3)
+        self.acc_p_entry.grid(row = 1, column = 1, padx = 5)
         
-        for b in beziers:
-            _.append(cubic_smooth_bezier(b, 0.5))
-            v = cubic_smooth_bezier(b, 0.5, d = 1)
-            dd.append([-v[1], v[0]])
+        parameters = LabelFrame(self.top, text="Smoothing parameters", padx=5, pady=5,  fg = '#56A0D3')
+
+        Label(self.top, text = 'Smoothing method: ').grid(row = 1, column = 0, padx = 10, pady = 5, sticky = W)
+        self.sm = OptionMenu(self.top, self.smoothingMethod, *smoothing_methods)
+        self.sm.grid(row = 1, column = 0, sticky = W, padx = 155, pady = 10)
+
+        parameters.grid(row = 2, padx = 10, pady = 5, sticky = EW)
+
+        if smoothing_method == 'Chanvese':
+            self.alphaVal = StringVar(self.top)
+            self.alphaVal.set(str(params['alpha']))
+
+            self.tolerance = StringVar(self.top)
+            self.tolerance.set(str(params['pixel_error_tolerance']))
+
+            self.max_its = StringVar(self.top)
+            self.max_its.set(str(params['max_its']))
                 
-        dd = np.array(dd)
-        norm = np.sqrt(np.sum(np.power(dd, 2), axis = 1))
+            Label(parameters, text = 'Alpha (higher = smoother): ').grid(row = 0, column = 0, padx = 5, pady = 5, sticky = W)
+            self.alpha = Entry(parameters, textvariable = self.alphaVal, width = 10, bd = 3)
+            self.alpha.grid(row = 0, padx = 200, pady = 5, sticky = W)
 
-        # both directions
-        dd = dd / np.hstack((np.reshape(norm, (len(norm), 1)), np.reshape(norm, (len(norm), 1))))
-        ndd = -dd
+            Label(parameters, text = 'Error tolerance (pixels):').grid(row = 1, column = 0, padx = 5, pady = 5, sticky = W)
+            self.tol = Entry(parameters, textvariable = self.tolerance, width = 10, bd = 3)
+            self.tol.grid(row = 1, padx = 200, pady = 5, sticky = W)
 
-        vals1 = brightness(dd, np.array(_))
-        vals2 = brightness(ndd, np.array(_))
+            Label(parameters, text = 'Max iterations: ').grid(row = 2, column = 0, padx = 5, pady = 5, sticky = W)
+            self.tol = Entry(parameters, textvariable = self.max_its, width = 10, bd = 3)
+            self.tol.grid(row = 2, padx = 200, pady = 5, sticky = W)
 
-        vals = np.vstack((vals1, vals2))
-        indices = np.where((np.isnan(vals1) == False) & (np.isnan(vals1) == False))[0]
-                
-        maxs = np.nanargmax(vals[:,indices], axis = 0)
 
-        for i in range(len(indices)):
+        OK = Button(self.top, text = 'OK', command = self.cleanup)
+        OK.grid(row = 3, column = 0, sticky = W, padx = 10, pady = 10)
+
+    def cleanup(self, event = None):
+        self.top.destroy()
+
+class transformWindow(object):
+    # options as they are are passed in upon the creation of the window
+    def __init__(self, master, gui_object):
+        self.top=self.top=Toplevel(master)
+        self.top.resizable(width=FALSE, height=FALSE)
+        self.top.wm_title("Transforms")
+
+        self.gui_object = gui_object
+
+        tooltips = Pmw.Balloon(self.top)
+        self.argnames = ['ksize = {0}']
+
+        self.arg1 = StringVar(self.top)
+        self.arg1.set('5')
+
+        self.arg2 = StringVar(self.top)
+        self.arg2.set('5')
+
+        self.arg3 = StringVar(self.top)
+        self.arg3.set('5')
+
+        self.transformVar = StringVar(self.top)
+        self.transformVar.set('Average Blur')
+
+        Label(self.top, text = 'Transform:').grid(row = 0, padx = 10, pady = 5, sticky = 'W')
+        method = OptionMenu(self.top, self.transformVar, 'Average Blur', 'Gaussian Blur', 'Median Blur', 'Bilateral Filter', 'Adaptive Gaussian Threshold', \
+                            'Otsu Threshold', 'Morphological Erosion', 'Morphological Dilation', 'Morphological Closing', \
+                            'Morphological Opening', 'Morphological Gradient', command = self.callback)
+        method.grid(row = 0, padx = 100, pady = 10, sticky = 'W')
+
+        self.general = LabelFrame(self.top, text = 'Parameters', padx = 5, pady = 5, fg = '#56A0D3')
+
+        self.args = [self.arg1, self.arg2, self.arg3]
         
-            if maxs[i] == 0:
-                nvs.append(dd[indices[i]])
+        self.arg1_label = Label(self.general, text = 'Kernel size (pixels):')
+        self.arg1_label.grid(row = 0, padx = 10, pady = 5, sticky = 'W')
+        self.arg1_entry = Entry(self.general, textvariable = self.arg1, width = 5)
+        self.arg1_entry.grid(row = 0, padx = 145, sticky = 'W')
+
+        self.arg2_label = Label(self.general, text = 'sigmaColor:')
+        self.arg2_label.grid(row = 1, padx = 10, pady = 5, sticky = 'W')
+        self.arg2_entry = Entry(self.general, textvariable = self.arg2, width = 5)
+        self.arg2_entry.grid(row = 1, padx = 125, sticky = 'W')
+
+        self.arg3_label = Label(self.general, text = 'sigmaSpace:')
+        self.arg3_label.grid(row = 2, padx = 10, pady = 5, sticky = 'W')
+        self.arg3_entry = Entry(self.general, textvariable = self.arg3, width = 5)
+        self.arg3_entry.grid(row = 2, padx = 125, sticky = 'W')
+
+        self.general.grid(row = 1, padx = 10, pady = 5, sticky = EW)
+
+        self.callback(None)
+
+        self.filelist = Listbox(self.top, width = 50, height = 10)
+        self.filelist.grid(row = 3, column = 0, padx = 5, pady = 5, sticky = EW)
+        tooltips.bind(self.filelist, "List of transforms applied to the image\nPress '+' button to add a transform")
+
+        findInFile = Button(self.top, text = " + ", command = self.add, padx = 10, pady = 10)
+        findInFile.grid(row = 2, column = 0, sticky = E, padx = 5, pady = 5)
+        tooltips.bind(findInFile, "Add transform")
+
+        clearButton = Button(self.top, text = "Clear all", command = self.clear, padx = 10, pady = 5)
+        clearButton.grid(row = 2, column = 0, padx = 5, pady = 5)
+
+        delButton = Button(self.top, text = " - ",
+                   command=self.delete, padx = 10, pady = 10)
+        delButton.grid(row = 2, column = 0, sticky = W, padx = 5, pady = 5)
+        tooltips.bind(delButton, "Remove a transform")
+
+    def get_current(self):
+        ret = self.transformVar.get()
+        options = dict()
+
+        for i in range(len(self.argnames)):
+            ret += ', {0} = {1}'.format(self.argnames[i], self.args[i].get())
+            if i == 0:
+                options[self.argnames[i]] = int(self.args[i].get())
             else:
-                nvs.append(ndd[indices[i]])
-            xys.append(_[indices[i]])
+                options[self.argnames[i]] = float(self.args[i].get())
 
+        if 'Morphological' in self.transformVar.get():
+            options['transform'] = self.transformVar.get().split(' ')[-1]
+
+        return ret, [self.transformVar.get(), options]
             
-        nvs = np.array(nvs)
-        xys = np.array(xys)
+    def clear(self):
+        self.filelist.delete(0,END)
 
-        mouts = contours[0]
+    def add(self):
+        string, option = self.get_current()
+        self.filelist.insert(END, string)
 
-        for i in range(1, len(contours)):
-            mouts = np.vstack((mouts, contours[i]))
+        self.gui_object.transformer.options.append(option)
+        self.gui_object.callback()
+        return
 
-        mouts = mouts.reshape((len(mouts), 2))
+    def delete(self):
+        if self.filelist.get(ANCHOR) != '':
+            del self.gui_object.transformer.options[self.filelist.get(0,END).index(self.filelist.get(ANCHOR))]
+            self.filelist.delete(ANCHOR)
+        elif self.filelist.get(END) != '':
+            del self.gui_object.transformer.options[-1]
+            self.filelist.delete(END)
 
-        bar = progressbar.ProgressBar()
-        si = []
+        self.gui_object.callback()
+        return
+
+    def callback(self, event):
             
-        #print len(tcks)
-        for i in range(len(nvs)):
-            nv = nvs[i]
-            xy = xys[i]
-            #print xy
-            xy = np.tile(xy, (len(mouts), 1))
-
-            dirs = mouts - xy
-            norm = np.sqrt(np.sum(np.power(dirs, 2), axis = 1))
-
-            dirs = dirs / np.hstack((np.reshape(norm, (len(norm), 1)), np.reshape(norm, (len(norm), 1))))
+        if self.transformVar.get() == 'Average Blur' or self.transformVar.get() == 'Median Blur' or 'Morphological' in self.transformVar.get():
+            self.arg1_label.grid(row = 0, padx = 10, pady = 5, sticky = 'W')
+            self.arg1_entry.grid(row = 0, padx = 145, sticky = 'W')
             
-            _ = np.tile(nv, (len(mouts), 1))
-            dots = np.sum(dirs*_, axis = 1)
-            dots = np.arccos(dots)
-
-            eligible = mouts[np.where((dots < np.pi*(3. / 180.)))[0]]
-            eligible = eligible.astype(np.float32)
+            self.arg1_label.config(text = 'Kernel size (pixels):')
+            self.arg1.set('5')
             
-            if eligible.shape[0] != 0:
-                tree = KDTree(eligible)
+            self.arg2_label.grid_forget()
+            self.arg2_entry.grid_forget()
 
-                d, index = tree.query(xy[0])
-                diameters.append(d)
-                #print d
-                si.append(i)
-                
-        paths = []
-        for b in beziers:
-            x1, y1 = b[0]
-            if (5. < x1 < im.shape[1] - 5) and (5. < y1 < im.shape[0]):
-                cx2, cy2 = b[1]
-                x2, y2 = b[2]
-                paths.append(CubicBezier(x1 + 1j * y1, x1 + 1j * y1, cx2 + 1j * cy2, x2 + 1j * y2))
+            self.arg3_label.grid_forget()
+            self.arg3_entry.grid_forget()
 
-        print('Writing SVG file...')
-        #print len(paths)
-        wsvg(paths, filename = filename + '.svg')
+            self.argnames = ['ksize']
 
-        print('Plotting diameter visualization...')
-        for out in outs:
-            plt.plot(out.T[:,0], out.T[:,1], c = 'r')
+        elif self.transformVar.get() == 'Gaussian Blur':
+            self.arg2_label.grid(row = 1, padx = 10, pady = 5, sticky = 'W')
+            self.arg2_entry.grid(row = 1, padx = 125, sticky = 'W')
 
-        for k in si:
-            x1, y1 = xys[k]
-            x2, y2 = xys[k] + nvs[k]*diameters[si.index(k)]
-            xm, ym = xys[k] + nvs[k]*diameters[si.index(k)]*0.5
+            self.arg3_label.grid(row = 2, padx = 10, pady = 5, sticky = 'W')
+            self.arg3_entry.grid(row = 2, padx = 125, sticky = 'W')
 
-            rets = get_rets(contours, np.array([xm,ym]))
+            self.arg1_label.config(text = 'Kernel size (pixels):')
+            self.arg2_label.config(text = 'SigmaX:')
+            self.arg3_label.config(text = 'SigmaY:')
 
-            if True in rets:
-                dataf['diameter'].append(diameters[si.index(k)])
-                dataf['x_midpoint'].append(xm)
-                dataf['y_midpoint'].append(ym)
-                
-                plt.plot([x1, x2], [y1, y2], c = 'b')
+            self.arg1.set('5')
+            self.arg2.set('0.')
+            self.arg3.set('0.')
+            self.argnames = ['ksize', 'SigmaX', 'SigmaY']
+        elif self.transformVar.get() == 'Bilateral Filter':
+            self.arg1_label.grid(row = 0, padx = 10, pady = 5, sticky = 'W')
+            self.arg1_entry.grid(row = 0, padx = 145, sticky = 'W')
+            
+            self.arg2_label.grid(row = 1, padx = 10, pady = 5, sticky = 'W')
+            self.arg2_entry.grid(row = 1, padx = 125, sticky = 'W')
 
-        dataf = pd.DataFrame(dataf)
-        dataf.to_csv(filename + '-diameters.csv', index = False)
+            self.arg3_label.grid(row = 2, padx = 10, pady = 5, sticky = 'W')
+            self.arg3_entry.grid(row = 2, padx = 125, sticky = 'W')
 
-        plt.savefig(filename + '-diameters.png', dpi = 100)
-        print('Done!')
+            self.arg1_label.config(text = 'Kernel size (pixels):')
+            self.arg2_label.config(text = 'SigmaColor:')
+            self.arg3_label.config(text = 'SigmaSpace:')
 
-def plot_beziers(plot = True, ofile = None):
-    plt.clf()
-    print('Creating bezier curves...')
-    global beziers
-    global outs
+            self.arg1.set('5')
+            self.arg2.set('75')
+            self.arg3.set('75')
 
-    outs = []
-    beziers = []
+            self.argnames = ['d', 'sigmaSpace', 'sigmaColor']
+        elif self.transformVar.get() == 'Adaptive Gaussian Threshold':
+            self.arg1_label.config(text = 'Block size (pixels)')
 
-    for c in contours:
-        perimeter = cv2.arcLength(c,True)
-        c = np.reshape(c, (len(c), 2)).astype(np.float32)
+            self.arg1.set('11')
 
-        c = np.append(c, c[0].reshape(1, 2), axis = 0)
+            self.arg2_label.grid_forget()
+            self.arg2_entry.grid_forget()
+
+            self.arg3_label.grid_forget()
+            self.arg3_entry.grid_forget()
+            
+            self.argnames = ['blockSize']
+        elif self.transformVar.get() == 'Otsu Threshold':
+            self.arg1_label.grid_forget()
+            self.arg1_entry.grid_forget()
+
+            self.arg2_label.grid_forget()
+            self.arg2_entry.grid_forget()
+
+            self.arg3_label.grid_forget()
+            self.arg3_entry.grid_forget()
+
+            self.argnames = []
+            
+class Transformer(object):
+    def __init__(self, gui_object):
+        self.options = []
+        self.gui_object = gui_object
+
+    def average_blur(self, im, ksize = 5):
+        return cv2.blur(im, (ksize, ksize))
+
+    def gaussian_blur(self, im, ksize, SigmaX, SigmaY):
+        return cv2.GaussianBlur(im, (ksize, ksize), SigmaX, SigmaY)
+
+    def median_blur(self, im, ksize = 5):
+        return cv2.medianBlur(im, ksize)
+
+    def bilateral_filter(self, im, d = 9, sigmaColor = 75, sigmaSpace = 75):
+        return cv2.bilateralFilter(im, d, sigmaColor, sigmaSpace)
+
+    def adaptive_gaussian_threshold(self, im, blockSize = 11):
+        return cv2.adaptiveThreshold(im,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,blockSize,2)
+
+    def otsu_threshold(self, im):
+        ret, thresh = cv2.threshold(im,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        return thresh
+
+    def morph_transform(self, im, ksize, transform = 'Erosion'):
+        kernel = np.ones((ksize, ksize), dtype = np.uint8)
+
+        if transform == 'Erosion':
+            return cv2.erode(im, kernel, iterations = 1)
+        elif transform == 'Dilation':
+            return cv2.dilate(im, kernel, iterations = 1)
+        elif transform == 'Closing':
+            return cv2.morphologyEx(im, cv2.MORPH_CLOSE, kernel)
+        elif transform == 'Opening':
+            return cv2.morphologyEx(im, cv2.MORPH_OPEN, kernel)
+
+    def transform(self, ret):
+        self.gui_object.manualThresh = True
         
-        x = c[:,0]
-        y = c[:,1]
+        for o in self.options:
+            if o[0] == 'Average Blur':
+                ret = self.average_blur(ret, **o[1])
+            elif o[0] == 'Gaussian Blur':
+                ret = self.gaussian_blur(ret, **o[1])
+            elif o[0] == 'Median Blur':
+                ret = self.median_blur(ret, **o[1])
+            elif o[0] == 'Bilateral Filter':
+                ret = self.bilateral_filter(ret, **o[1])
+            elif o[0] == 'Adaptive Gaussian Threshold':
+                ret = self.adaptive_gaussian_threshold(ret, **o[1])
+                self.gui_object.manualThresh = False
+            elif o[0] == 'Otsu Threshold':
+                ret = self.otsu_threshold(ret)
+                self.gui_object.manualThresh = False
 
-        tck,u = interpolate.splprep([x,y], per = len(c))
-        tcks.append(tck)
+        self.gui_object.set_state()
 
-        unew = np.linspace(0., 1., int(np.round(perimeter / pp)) * 2 + 1)
+        return ret        
+            
+class ContourizeMe(object):
+    def __init__(self, im_path):
+        """
+        ----------------
+        Global variables
+        ----------------
 
-        out = interpolate.splev(unew,tck)
-        out = np.array(out)
+        Set the defaults:
+        """
+        # List of bezier curves
+        self.beziers = None
 
-        outs.append(out)
+        # Thresheld image given user constraints
+        self.thresh = None
 
-        for k in range(out.shape[1] / 2):
-            b = out[:,2*k:2*(k + 1) + 1].T
-            beziers.append(b)
+        # Image to threshold given user constraints (Grayscale, RGB, or HSV)
+        # after potential transforms
+        self.tothresh = None
+
+        # List of finalized (potentially smoothed contour points), a list of N,2 arrays representing each contour in pixel space
+        self.outs = None
+
+        tcks = []
+
+        # Approximate arc lenghth per Bezier curve
+        self.pp = 5.
+
+        # Boolean for writing and visualizing estimated diameters
+        self.write_diameters = True
+
+        # Lower bound for the percetile of accelerations to be considered for diameter calculation
+        self.percentile = 100.
+
+        # Smoothing algorithm options
+        # set the default options
+        self.smoothing_methods = ['Chanvese', 'None']
+        self.smoothing_method = 'Chanvese'
+        self.smoothing_parameters = [{'alpha': 0.01, 'pixel_error_tolerance': 10, 'max_its': 50}, dict()]
+
+        self.smoothing = False
+
+        """
+        Begin loadin the data and GUI elements
+        """
+        # Load the image
+        self.im = cv2.imread(im_path)
+
+        self.transformer = Transformer(self)
+        self.manualThresh = True
+        self.hidden = True
+
+        # Keep the three paramaterizations in memory
+        # -----------------------
+        # gray = self.imgray
+        # BGR = self.im
+        # HSV = self.hsv_im
+
+        if self.im is None:
+            # read with the alternate method
+            self.im = imread(os.path.abspath(args.image))
+
+            if len(np.where(im > 255)[0]) > 0:
+                self.im = map_uint16_to_uint8(self.im)
+            self.imgray = cv2.cvtColor(self.im,cv2.COLOR_BGR2GRAY)
+        elif len(self.im.shape) == 3:
+            self.imgray = cv2.cvtColor(self.im,cv2.COLOR_BGR2GRAY)
+        else:
+            self.imgray = copy.copy(self.im)
+            self.im = cv2.cvtColor(self.imgray, cv2.COLOR_GRAY2BGR)
+            print('Working with grayscale image')
+
+        self.info = dict()        
+        self.info['Image location'] = im_path
+        self.mask = np.zeros(self.imgray.shape, dtype = np.uint8)
+
+        # to display
+        self.mim = cv2.cvtColor(copy.copy(self.im), cv2.COLOR_BGR2RGB)
+
+        ret,thresh = cv2.threshold(self.imgray,127,255,0)
+        _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+        # OpenCV 2 patch
+        if len(_) == 3:
+            _, contours, hierarchy = _
+        else:
+            contours, hierarchy = _
+        
+        self.contours = sorted(contours, key = len, reverse = True)
+        for j in range(1):
+            cv2.drawContours(self.mim, contours, j, color=(0,0,0), thickness=-1)
+                
+        # Create the window
+        self.root = Tk()
+        self.root.resizable(width=False, height=False)
+
+        view_screen = Toplevel(self.root)
+        view_screen.resizable(width=TRUE, height=TRUE)
+
+        t_view_screen = Toplevel(self.root)
+        t_view_screen.resizable(width=TRUE, height=TRUE)
+        # set the title
+        self.root.wm_title('ContourizeMe')
+
+        print 'Made root object...'
+
+        # View screen window
+        self.app = Zoom_Advanced(view_screen, path=im_path)
+        self.t_app = Zoom_Advanced(t_view_screen, path=im_path)
+        self.t_app.hide()
+
+        print 'Made view screen...'
+
+        self.pamVar = StringVar()
+        self.pamVar.set('Grayscale')
+
+        self.nContours = StringVar()
+        self.nContours.set('1')
+        self.allContours = IntVar()
+
+        #kernelSize.trace("w", lambda name, index, mode, kernelSize=kernelSize: callback(kernelSize))
+         
+        self.root.protocol('WM_DELETE_WINDOW', self.quit_all)
+
+        Label(self.root, text = 'Gray / Red / Hue').grid(row = 6, column = 0, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
+        self.w1 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
+        self.w1.set(0)
+        self.w1.grid(row = 0, column = 0, padx = 10, pady = 5, sticky = 'NS', rowspan = 6)
+        self.w2 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
+        self.w2.set(255)
+        self.w2.grid(row = 0, column = 1,  padx = 10, pady = 5, sticky = 'NS', rowspan = 6)
+
+        Label(self.root, text = 'Green / Saturation').grid(row = 6, column = 2, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
+        self.w5 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
+        self.w5.set(0)
+        self.w5.grid(row = 0, column = 2, padx = 10, pady = 5,  sticky = 'NS', rowspan = 6)
+        self.w6 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
+        self.w6.set(255)
+        self.w6.grid(row = 0, column = 3,  padx = 10, pady = 5,  sticky = 'NS', rowspan = 6)
+        
+        Label(self.root, text = 'Blue / Value').grid(row = 6, column = 4, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
+        self.w7 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
+        self.w7.set(0)
+        self.w7.grid(row = 0, column = 4, padx = 10, pady = 5,  sticky = 'NS', rowspan = 6)
+        self.w8 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
+        self.w8.set(255)
+        self.w8.grid(row = 0, column = 5,  padx = 10, pady = 5,  sticky = 'NS', rowspan = 6)
+
+        Label(self.root, text = 'Number of contours to show:').grid(row = 7, padx = 10, columnspan = 6, sticky = 'W')
+        self.w3 = Entry(self.root, textvariable = self.nContours, width = 5, command = self.callback()).grid(row = 7, columnspan = 6, padx = 210, sticky = 'W')
+
+        c = Checkbutton(self.root, text="Show all contours", variable=self.allContours, command = self.callback)
+        c.grid(row = 7, padx = 285, pady = 10, sticky = 'W', columnspan = 6)
+
+        """
+        Label(self.root, text = 'Number of contours to show:').grid(row = 7, padx = 10, columnspan = 6, sticky = 'W')
+        self.w3 = Scale(self.root, from_=1, to=10, orient=HORIZONTAL, command = self.callback)
+        self.w3.set(1)
+        self.w3.grid(row = 8, padx = 10, pady = 5, sticky = 'EW', columnspan = 6)
+        """
+        
+        Label(self.root, text = 'Perimeter per Bezier:').grid(row = 9, padx = 10, columnspan = 6, sticky = 'W')
+        self.w4 = Scale(self.root, from_=3, to=300, orient=HORIZONTAL, command = self.callback)
+        self.w4.set(15)
+        self.w4.grid(row = 10, padx = 10, pady = 5, sticky = 'EW', columnspan = 6)
+
+        self.buttons = LabelFrame(self.root, text = 'Operations', padx = 5, pady = 5, fg = '#56A0D3')
+        self.buttons.grid(row = 11, columnspan = 6, sticky = 'EW', padx = 5, pady = 10)
+
+        Label(self.buttons, text = 'Parameterization:').grid(row = 0, column = 0, padx = 10, pady = 5, sticky = 'W')
+        method = OptionMenu(self.buttons, self.pamVar, 'Grayscale', 'RGB', 'HSV', command = self.callback)
+        method.grid(row = 0, column = 0, padx = 125, pady = 5, sticky = 'W')
+        
+        save = Button(self.buttons, text = "Save to SVG", command = self.save_to_svg)
+        save.grid(row = 2, column = 0, padx = 10, pady = 5, sticky = 'W')
+
+        options = Button(self.buttons, text = 'Options', command = self.opfunc)
+        options.grid(row = 2, column = 0, padx = 125, pady = 5, sticky = 'W')
+
+        save = Button(self.buttons, text = "Plot", command = self.plot_beziers)
+        save.grid(row = 2, column = 0, padx = 200, pady = 5, sticky = 'W')
+
+        transforms = Button(self.buttons, text = 'Transforms', command = self.tfunc)
+        transforms.grid(row = 2, column = 0, padx = 250, pady = 5, sticky = 'W')
+
+        self.hideShowTransformedImage = Button(self.buttons, text = 'Show transformed image', command = self.hide_show)
+        self.hideShowTransformedImage.grid(row = 2, column = 0, padx = 350, pady = 5, sticky = 'W')
+
+        self.root.mainloop()
+
+    def callback(self, e = None):
+        tothresh = self.get_tothresh()
+
+        _ = copy.copy(self.mim)
+
+        if tothresh is not None:
+            if not self.smoothing:
+                self.contours, self.thresh = self.get_contours(tothresh)
+
+            print type(self.contours[0])
+
+            cv2.drawContours(_, self.contours, -1, color=(0,255,0), thickness=2)
+
+            img = Image.fromarray(_)
+            img_t = Image.fromarray(tothresh)
+            #img = ImageTk.PhotoImage(img)
+
+            self.app.image = img
+            self.app.show_image()
+
+            self.t_app.image = img_t
+            self.t_app.show_image()
+
+    def get_tothresh(self):
+        if self.pamVar.get() == 'Grayscale':
+            return self.transformer.transform(self.imgray)
+        elif self.pamVar.get() == 'RGB':
+            return self.transformer.transform(self.im)
+        elif self.pamVar.get() == 'HSV':
+            return self.transformer.transform(self.hsv_im)
+        
+   
+    def get_bounds(self):
+        # Grab the chosen bounds
+        r1 = int(np.round(self.w1.get()))
+        r2 = int(np.round(self.w2.get()))
+
+        b1 = int(np.round(self.w5.get()))
+        b2 = int(np.round(self.w6.get()))
+
+        g1 = int(np.round(self.w7.get()))
+        g2 = int(np.round(self.w8.get()))
+
+        return r1, r2, b1, b2, g1, g2
+
+    def set_state(self):
+        if not self.manualThresh:
+            self.w1.config(state = DISABLED)
+            self.w2.config(state = DISABLED)
+            self.w5.config(state = DISABLED)
+            self.w6.config(state = DISABLED)
+            self.w7.config(state = DISABLED)
+            self.w8.config(state = DISABLED)
+        else:
+            self.w1.config(state = NORMAL)
+            self.w2.config(state = NORMAL)
+            self.w5.config(state = NORMAL)
+            self.w6.config(state = NORMAL)
+            self.w7.config(state = NORMAL)
+            self.w8.config(state = NORMAL)
+
+    def get_contours(self, tothresh):
+        r1, r2, b1, b2, g1, g2 = self.get_bounds()
+        
+        # Bound according to the chosen paramaterization
+        if self.manualThresh:
+            if self.pamVar.get() == 'Grayscale':
+                ret,thresh = cv2.threshold(tothresh,r1,r2,0)
+            elif self.pamVar.get() == 'RGB':
+                thresh = cv2.inRange(tothresh, (b1, g1, r1), (b2, g2, r2))
+            elif self.pamVar.get() == 'HSV':
+                thresh = cv2.inRange(tothresh, (r1, g1, b1), (r2, g2, b2))
+        else:
+            thresh = tothresh
+
+
+        for o in self.transformer.options:
+            if 'Morphological' in o[0]:
+                thresh = self.transformer.morph_transform(thresh, **o[1])
+
+        # contour finding with OpenCV 2 or 3
+        _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+        if len(_) == 3:
+            _, contours, hierarchy = _
+        else:
+            contours, hierarchy = _
+            
+        contours = sorted(contours, key = len, reverse = True)
+
+        if self.allContours.get() != 1:
+            try:
+                nContours = int(self.nContours.get())
+            
+                if len(contours) > nContours:
+                    contours = contours[:nContours]
+            except:
+                pass
+
+        return contours, thresh
+
+    def quit_all(self):
+        self.root.quit()
+        self.root.destroy()
+        plt.close()
+        sys.exit()
+
+    def plot_beziers(self, plot = True, ofile = None):
+        plt.clf()
+        print('Creating bezier curves...')
+
+        self.outs = []
+        self.beziers = []
+
+        mask = np.zeros(self.imgray.shape)
+        cv2.drawContours(mask, self.contours, -1, color = 1., thickness = -1)
+
+        params = self.smoothing_parameters[self.smoothing_methods.index(self.smoothing_method)]
+
+        if smoothing_method == 'Chanvese':
+            c = Chanvese()
+            seg, phi, its = c.chanvese(self.im, mask, alpha = params['alpha'], max_its = params['max_its'], display = False, thresh = params['pixel_error_tolerance'])
+
+            cs = plt.contour(phi, 0)
+            for collection in cs.collections:
+                paths = collection.get_paths()
+                for path in paths:
+                    self.outs.append(path.vertices)
+        else:
+           self.outs = copy.copy(contours)    
+
+        for out in outs:
+            c =  out.reshape(len(out), 1, 2).astype(np.float32)
+            
+            perimeter = cv2.arcLength(c,True)
+
+            als = np.array([0.] + [cv2.arcLength(c[:i],True) for i in range(1,len(c))])
+
+            t = np.linspace(0., perimeter, int(np.round(perimeter / pp)) * 2 + 1)
+            t = [np.argmin(np.abs(als - u)) for u in t]
+
+            out = out[t]
+
+            for k in range(out.shape[0] // 2):
+                b = out[2*k:2*(k + 1) + 1,:]
+
+                if len(b) == 3:
+                    beziers.append(b)
 
         if plot:
             print('Plotting...')
@@ -382,270 +959,134 @@ def plot_beziers(plot = True, ofile = None):
             plt.show()
             plt.close()
 
-def quit_all():
-    root.quit()
-    root.destroy()
-    plt.close()
-    sys.exit()
-    
-def callback(e = None):
-    global contours
-    global pp
-    global t1
-    global panel
-    global i
+    def opfunc(self):
+        # make an options window and wait for it
+        root = Tk()
+        root.withdraw()
+        
+        w = optionsPopupWindow(root, self.smoothing_methods, self.smoothing_parameters, self.percentile, self.write_diameters, self.smoothing_method)
+        root.wait_window(w.top)
 
-    mim = cv2.cvtColor(copy.copy(im), cv2.COLOR_BGR2RGB)
-    pp = float(w4.get())
+        if w.wdiams.get() == 1:
+            self.write_diameters = True
+        else:
+            self.write_diameters = False
 
-    if blurVar.get() == 1:
-        try:
-            if pamVar.get() == 'Grayscale':
-                tothresh = cv2.blur(imgray, (int(kernelSize.get()), int(kernelSize.get())))
-                ix = 0
-            elif pamVar.get() == 'RGB':
-                tothresh = cv2.blur(im, (int(kernelSize.get()), int(kernelSize.get())))
-                ix = 1
-            elif pamVar.get() == 'HSV':
-                tothresh = cv2.blur(hsv_im, (int(kernelSize.get()), int(kernelSize.get())))
-                ix = 2
-            mim = cv2.blur(mim, (int(kernelSize.get()), int(kernelSize.get())))
-        except:
-            tothresh = None
-    else:
-        if pamVar.get() == 'Grayscale':
-            tothresh = imgray
-            ix = 0
-        elif pamVar.get() == 'RGB':
-            tothresh = im
-            ix = 1
-        elif pamVar.get() == 'HSV':
-            tothresh = hsv_im
-            ix = 2
+        self.percentile = float(w.acc_p.get())
+        
+        self.smoothing_method = w.smoothingMethod.get()
+        params = self.smoothing_parameters[self.smoothing_methods.index(self.smoothing_method)]
 
-    if tothresh is not None:
-        # Grab the chosen bounds
-        r1 = int(np.round(w1.get()))
-        r2 = int(np.round(w2.get()))
+        if self.smoothing_method == 'Chanvese':
+            params['alpha'] = float(w.alphaVal.get())
+            params['pixel_error_tolerance'] = int(w.tolerance.get())
+            params['max_its'] = int(w.max_its.get())
 
-        b1 = int(np.round(w5.get()))
-        b2 = int(np.round(w6.get()))
+        self.smoothing_parameters[self.smoothing_methods.index(self.smoothing_method)] = params
 
-        g1 = int(np.round(w7.get()))
-        g2 = int(np.round(w8.get()))
+    def tfunc(self):
+
+        w = transformWindow(self.root, self)
+        self.root.wait_window(w.top)
+
+    def save_to_svg(self):
+        plt.clf()
+        if len(contours) > 0:
+            filename = tkFileDialog.asksaveasfilename()
+
+            if filename != '':
+                plot_beziers(plot = False)
+
+                mask = np.zeros(self.imgray.shape)
+                cv2.drawContours(mask, self.contours, -1, color = 1., thickness = -1)
+
+                print('Computing normal vectors and diameter...')
+                dataf, xys, diameters, nvs, si = get_diameters(self.outs, self.beziers, mask)
+                        
+                paths = []
+                for b in self.beziers:
+                    x1, y1 = b[0]
+                    if (5. < x1 < im.shape[1] - 5) and (5. < y1 < im.shape[0]):
+                        cx2, cy2 = b[1]
+                        x2, y2 = b[2]
+                        paths.append(CubicBezier(x1 + 1j * y1, x1 + 1j * y1, cx2 + 1j * cy2, x2 + 1j * y2))
+
+                print('Writing SVG file...')
+                
+                wsvg(paths, filename = filename + '.svg')
+
+                # Update the information dictionary
+                self.update_info()
+                
+                if smoothing_method != 'None':
+                    ofile = Contours(self.contours, self.beziers, self.info, self.outs)
+                else:
+                    ofile = Contours(self.contours, self.beziers, self.info)
+
+                pickle.dump(ofile, open('{0}.pkl'.format(filename), 'w'))
+
+                print('Plotting diameter visualization...')
+                for out in self.outs:
+                    plt.plot(out.T[:,0], out.T[:,1], c = 'r')
+
+                for k in si:
+                    x1, y1 = xys[k]
+                    x2, y2 = xys[k] + nvs[k]*diameters[si.index(k)]
+                    
+                    plt.plot([x1, x2], [y1, y2], c = 'b')
+
+                dataf = pd.DataFrame(dataf)
+                dataf.to_csv(filename + '-diameters.csv', index = False)
+
+                plt.savefig(filename + '-diameters.png', dpi = 100)
+                print('Done!')
+
+    def update_info(self):
+        r1, r2, b1, b2, g1, g2 = self.get_bounds()
+
+        self.info['Parameterization'] = self.pamVar.get()
 
         # Bound according to the chosen paramaterization
         if pamVar.get() == 'Grayscale':
-            ret,thresh = cv2.threshold(tothresh,r1,r2,0)
-        elif pamVar.get() == 'RGB':
-            thresh = cv2.inRange(tothresh, (b1, g1, r1), (b2, g2, r2))
-        elif pamVar.get() == 'HSV':
-            thresh = cv2.inRange(tothresh, (r1, g1, b1), (r2, g2, b2))
-
-        # contour finding with OpenCV 2 or 3
-        _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-
-        if len(_) == 3:
-            _, contours, hierarchy = _
+            self.info['Lower bound'] = r1
+            self.info['Upper bound'] = r2
         else:
-            contours, hierarchy = _
-            
-        contours = sorted(contours, key = len, reverse = True)
+            self.info['Lower bound'] = (r1, g1, b1)
+            self.info['Upper bound'] = (r2, g2, b2)
+
+        if blurVar.get() == 1:
+            self.info['Blurring'] = int(kernelSize.get())
+        else:
+            self.info['Blurring'] = None
+
+        self.info['Smoothing'] = [smoothing_method, smoothing_parameters[smoothing_methods.index(smoothing_method)]]
+
+    def hide_show(self):
+        if self.hidden:
+            self.t_app.show()
+            self.hideShowTransformedImage.config(text = 'Hide transformed image')
+
+            self.hidden = False
+        else:
+            self.t_app.hide()
+            self.hideShowTransformedImage.config(text = 'Show transformed image')
+
+            self.hidden = True
         
-        if len(contours) > int(np.round(w3.get())):
-            contours = contours[:int(np.round(w3.get()))]
         
-        cv2.drawContours(mim, contours, -1, color=(0,255,0), thickness=3)
 
-        img = Image.fromarray(cv2.resize(mim, (0,0), fx = scale, fy = scale))
-        img = ImageTk.PhotoImage(img)
-
-        panel.itemconfig(i, image = img)
-        panel.image = img
-
-def take_in_sample(event):
-    global samples
-    
-    canvas = event.widget
-    x = canvas.canvasx(event.x)
-    y = canvas.canvasy(event.y)
-    
-    samples['In'][pamVar.get()].append(imgray[int(y/scale), int(x/scale)])
-
-    callback(event)
-
-def take_out_sample(event):
-    global samples
-    
-    canvas = event.widget
-    x = canvas.canvasx(event.x)
-    y = canvas.canvasy(event.y)
-
-    samples['Out'][pamVar.get()].append(imgray[int(y/scale), int(x/scale)])
-
-    callback(event)
-
-def clear_sample(event):
-    global samples
-    
-    samples = dict()
-    samples['In'] = dict()
-    samples['Out'] = dict()
-    
-    samples['In']['RGB'] = list()
-    samples['In']['HSV'] = list()
-    samples['In']['Grayscale'] = list()
-
-    samples['Out']['RGB'] = list()
-    samples['Out']['HSV'] = list()
-    samples['Out']['Grayscale'] = list()
-            
+         
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="allows the user to slide to a values for 8-bit pixel thresholding")
+    parser.add_argument("image", default = "None")
     parser.add_argument("--movie", default = "None")
-    parser.add_argument("--image", default = "None")
     parser.add_argument("--scale", default = "0.5")
 
     args = parser.parse_args()
+    ContourizeMe(args.image)
 
-    if args.movie == "None" and args.image == "None":
-        print("No movie or image specified! Use --image or --movie argument")
-        sys.exit()
-
-    if args.movie != "None":
-        mov = cv2.VideoCapture(args.movie)
-        im = mov.read()
-    else:
-        im = cv2.imread(args.image)
-
-    print 'Working with image of size {0} x {1}'.format(im.shape[1], im.shape[0])
-
-    scale = float(args.scale)
-
-    samples = dict()
-    samples['In'] = dict()
-    samples['Out'] = dict()
     
-    samples['In']['RGB'] = list()
-    samples['In']['HSV'] = list()
-    samples['In']['Grayscale'] = list()
-
-    samples['Out']['RGB'] = list()
-    samples['Out']['HSV'] = list()
-    samples['Out']['Grayscale'] = list()
-
-    if im is None:
-        # read with the alternate method
-        im = imread(args.image)
-        
-        imgray = map_uint16_to_uint8(im)
-        im = cv2.cvtColor(imgray, cv2.COLOR_GRAY2BGR)
-    elif len(im.shape) == 3:
-        imgray = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
-    else:
-        imgray = im
-        im = cv2.cvtColor(imgray, cv2.COLOR_GRAY2BGR)
-
-    # Keep the three paramaterizations in memory
-    # -----------------------
-    # gray = imgray
-    # RGB = im
-    # HSV = hsv_im
-        
-    mim = cv2.cvtColor(copy.copy(im), cv2.COLOR_BGR2RGB)
-    hsv_im = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
-
-    ret,thresh = cv2.threshold(imgray,127,255,0)
-    _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-
-    # OpenCV 2 fix
-    if len(_) == 3:
-        _, contours, hierarchy = _
-    else:
-        contours, hierarchy = _
     
-    contours = sorted(contours, key = len, reverse = True)
-    for j in range(1):
-        cv2.drawContours(mim, contours, j, color=(0,0,0), thickness=-1)
-            
-    # Create the window
-    root = Tk()
-    root.resizable(width=False, height=False)
-
-    # Load the image
-    img = Image.fromarray(cv2.resize(mim, (0,0), fx = scale, fy = scale))
-    img = ImageTk.PhotoImage(img)
-
-    # blit to the panel
-    panel = Canvas(root, width = im.shape[1] * scale, height = im.shape[0] * scale)
-    panel.grid(row = 0, column = 0, rowspan = 5, columnspan = 6, sticky = 'W')
-    i = panel.create_image((im.shape[1] * (scale / 2.), im.shape[0] * (scale / 2.)), image = img)
-
-    # Functions for taking pixel samples
-    # I'll keep these around for now
-    panel.tag_bind(i, '<ButtonPress-1>', take_in_sample)
-    panel.tag_bind(i, '<Control-1>', take_out_sample)
-    root.bind('<Control-c>', clear_sample)
-
-    # variables tied to the GUI
-    blurVar = IntVar()
-    kernelSize = StringVar()
-    kernelSize.set('5')
     
-    methodVar = StringVar()
-    methodVar.set('Manual')
 
-    pamVar = StringVar()
-    pamVar.set('Grayscale')
-    
-    kernelSize.trace("w", lambda name, index, mode, kernelSize=kernelSize: callback(kernelSize))
-     
-    root.protocol('WM_DELETE_WINDOW', quit_all)
-    
-    w1 = Scale(root, from_=0, to=255, orient=VERTICAL, command = callback)
-    w1.set(0)
-    w1.grid(row = 0, column = 6, padx = 10, pady = 5, rowspan = 10, sticky = 'NS')
-    w2 = Scale(root, from_=0, to=255, orient=VERTICAL, command = callback)
-    w2.set(255)
-    w2.grid(row = 0, column = 7,  padx = 10, pady = 5, rowspan = 10, sticky = 'NS')
 
-    w5 = Scale(root, from_=0, to=255, orient=VERTICAL, command = callback)
-    w5.set(0)
-    w5.grid(row = 0, column = 8, padx = 10, pady = 5, rowspan = 10, sticky = 'NS')
-    w6 = Scale(root, from_=0, to=255, orient=VERTICAL, command = callback)
-    w6.set(255)
-    w6.grid(row = 0, column = 9,  padx = 10, pady = 5, rowspan = 10, sticky = 'NS')
-
-    w7 = Scale(root, from_=0, to=255, orient=VERTICAL, command = callback)
-    w7.set(0)
-    w7.grid(row = 0, column = 10, padx = 10, pady = 5, rowspan = 10, sticky = 'NS')
-    w8 = Scale(root, from_=0, to=255, orient=VERTICAL, command = callback)
-    w8.set(255)
-    w8.grid(row = 0, column = 11,  padx = 10, pady = 5, rowspan = 10, sticky = 'NS')
-
-    Label(root, text = 'Number of contours to show:').grid(row = 5, padx = 10)
-    w3 = Scale(root, from_=1, to=10, orient=HORIZONTAL, command = callback)
-    w3.set(1)
-    w3.grid(row = 6, padx = 10, pady = 5, sticky = 'EW', columnspan = 6)
-
-    Label(root, text = 'Perimeter per Bezier (higher = smoother):').grid(row = 7, padx = 10)
-    w4 = Scale(root, from_=5, to=300, orient=HORIZONTAL, command = callback)
-    w4.set(15)
-    w4.grid(row = 8, padx = 10, pady = 5, sticky = 'EW', columnspan = 6)
-
-    C1 = Checkbutton(root, text = "Blur with kernel size:", variable = blurVar, \
-                 onvalue = 1, offvalue = 0, command = callback).grid(row = 9, padx = 10, sticky = 'W')
-    
-    Entry(root, textvariable = kernelSize, width = 5).grid(row = 9, padx = 175, sticky = 'W')
-
-    Label(root, text = 'Parameterization:').grid(row = 10, column = 6, padx = 10, pady = 10, sticky = 'W', columnspan = 6)
-    method = OptionMenu(root, pamVar, 'Grayscale', 'RGB', 'HSV', command = callback)
-    method.grid(row = 10, column = 6, padx = 150, pady = 10, sticky = 'W', columnspan = 6)
-    
-    save = Button(root, text = "Save to SVG", command = save_to_svg)
-    save.grid(row = 10, padx = 10, pady = 5, sticky = 'W')
-
-    save = Button(root, text = "Plot", command = plot_beziers)
-    save.grid(row = 10, column = 5, padx = 10, pady = 5, sticky = 'E')
-
-    root.mainloop()
