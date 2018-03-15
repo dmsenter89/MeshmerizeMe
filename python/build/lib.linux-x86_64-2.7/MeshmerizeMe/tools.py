@@ -68,11 +68,59 @@ class Contours(object):
         self.uv_smoothed = uv_smoothed
         self.info = info
 
+        self.im = None
+
     def __str__(self):
         if self.info is not None:
             return str(self.info)
         else:
             return 'Emtpy Contours object or the information dictionary has not yet been defined'
+
+    def smooth(self, method = 'Chanvese', **args):
+        ret = []
+
+        if method == 'Chanvese':
+            if self.im is None:
+                self.im = cv2.imread(self.info['Image path'])
+
+            mask = np.zeros(self.imshape[:2])
+            cv2.drawContours(mask, self.uv, -1, color = 1., thickness = -1)
+
+            c = Chanvese()
+            seg, phi, its = c.chanvese(self.im, mask, alpha = alpha, max_its = max_its, display = False, thresh = pixel_error_tolerance)
+
+            cs = plt.contour(phi, 0)
+            for collection in cs.collections:
+                paths = collection.get_paths()
+                for path in paths:
+                    ret.append(path.vertices)
+
+            return ret
+
+    def perimeter(self, index = 0):
+        return cv2.arcLength(contours[index], True)
+        
+    def area(self, index = 0):
+        return cv2.contourArea(contours[index])
+
+    def convex_hull(self, index = 0):
+        return cv2.convexHull(contours[index])
+
+    def bounding_rectangle(self, index = 0):
+        return cv2.boundingRect(contours[index])
+
+    def estimate_diameters(self, acc_bound = 100, radian_err = 7.5 * (np.pi/180.)):
+        if self.im is None:
+            self.im = cv2.imread(self.info['Image path'])
+
+        mask = np.zeros(self.imshape[:2])
+        cv2.drawContours(mask, self.uv, -1, color = 1., thickness = -1)
+
+        dataf, xys, diameters, nvs, si = get_diameters(self.uv_smoothed, self.beziers, mask, acc_bound = 100, radian_err = radian_err)
+
+        return xys, diameters
+
+    
 
     
 """

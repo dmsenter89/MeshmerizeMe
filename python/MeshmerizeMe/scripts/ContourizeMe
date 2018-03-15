@@ -32,13 +32,9 @@ import pandas as pd
 from scipy.interpolate import UnivariateSpline
 from MeshmerizeMe import get_diameters, Chanvese, Contours
 
-print 'Got this many imports...'
-
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.backend_bases import MouseEvent
 from matplotlib.figure import Figure
-
-print 'Imported strange matplotlib stuff...'
 
 from scipy.stats import norm
 import scipy.ndimage as nd
@@ -49,6 +45,7 @@ import matplotlib.pyplot as plt
 
 import Pmw
 import skimage
+import os
 
 eps = np.finfo(float).eps
 
@@ -124,7 +121,7 @@ class Transformer(object):
         return cv2.adaptiveThreshold(im,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,cv.THRESH_BINARY,blockSize,2).astype(np.uint8)*255
 
     def otsu_threshold(self):
-        return cv2.threshold(im,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU).astype(np.uint8)*255
+        return cv2.threshold(im,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU).astype(np.uint8)*255
 
     def morph_transform(self, im, transform = 'Erode', kernel = (5,5)):
         kernel = np.ones(kernel, dtype = np.uint8)
@@ -634,7 +631,7 @@ class ContourizeMe(object):
         tcks = []
 
         # Approximate arc lenghth per Bezier curve
-        self.pp = 5.
+        self.pp = 15.
 
         # Boolean for writing and visualizing estimated diameters
         self.write_diameters = True
@@ -646,7 +643,7 @@ class ContourizeMe(object):
         # set the default options
         self.smoothing_methods = ['Chanvese', 'None']
         self.smoothing_method = 'Chanvese'
-        self.smoothing_parameters = [{'alpha': 0.01, 'pixel_error_tolerance': 10, 'max_its': 50}, dict()]
+        self.smoothing_parameters = [{'alpha': 0.01, 'pixel_error_tolerance': 10, 'max_its': 5}, dict()]
 
         self.smoothing = False
 
@@ -681,7 +678,7 @@ class ContourizeMe(object):
             print('Working with grayscale image')
 
         self.info = dict()        
-        self.info['Image location'] = im_path
+        self.info['Image location'] = os.path.abspath(im_path)
         self.mask = np.zeros(self.imgray.shape, dtype = np.uint8)
 
         # to display
@@ -712,14 +709,10 @@ class ContourizeMe(object):
         # set the title
         self.root.wm_title('ContourizeMe')
 
-        print 'Made root object...'
-
         # View screen window
         self.app = Zoom_Advanced(view_screen, path=im_path)
         self.t_app = Zoom_Advanced(t_view_screen, path=im_path)
         self.t_app.hide()
-
-        print 'Made view screen...'
 
         self.pamVar = StringVar()
         self.pamVar.set('Grayscale')
@@ -727,6 +720,9 @@ class ContourizeMe(object):
         self.nContours = StringVar()
         self.nContours.set('1')
         self.allContours = IntVar()
+
+        self.w4 = Scale(self.root, from_=3, to=300, orient=HORIZONTAL, command = self.callback)
+        self.w4.set(int(self.pp))
 
         #kernelSize.trace("w", lambda name, index, mode, kernelSize=kernelSize: callback(kernelSize))
          
@@ -770,8 +766,7 @@ class ContourizeMe(object):
         """
         
         Label(self.root, text = 'Perimeter per Bezier:').grid(row = 9, padx = 10, columnspan = 6, sticky = 'W')
-        self.w4 = Scale(self.root, from_=3, to=300, orient=HORIZONTAL, command = self.callback)
-        self.w4.set(15)
+        self.w4.set(int(self.pp))
         self.w4.grid(row = 10, padx = 10, pady = 5, sticky = 'EW', columnspan = 6)
 
         self.buttons = LabelFrame(self.root, text = 'Operations', padx = 5, pady = 5, fg = '#56A0D3')
@@ -801,13 +796,14 @@ class ContourizeMe(object):
     def callback(self, e = None):
         tothresh = self.get_tothresh()
 
+        self.pp = float(self.w4.get())
+        print self.pp
+
         _ = copy.copy(self.mim)
 
         if tothresh is not None:
             if not self.smoothing:
                 self.contours, self.thresh = self.get_contours(tothresh)
-
-            print type(self.contours[0])
 
             cv2.drawContours(_, self.contours, -1, color=(0,255,0), thickness=2)
 
@@ -865,7 +861,8 @@ class ContourizeMe(object):
         # Bound according to the chosen paramaterization
         if self.manualThresh:
             if self.pamVar.get() == 'Grayscale':
-                ret,thresh = cv2.threshold(tothresh,r1,r2,0)
+                thresh = cv2.inRange(tothresh,r1,r2)
+
             elif self.pamVar.get() == 'RGB':
                 thresh = cv2.inRange(tothresh, (b1, g1, r1), (b2, g2, r2))
             elif self.pamVar.get() == 'HSV':
@@ -917,35 +914,38 @@ class ContourizeMe(object):
 
         params = self.smoothing_parameters[self.smoothing_methods.index(self.smoothing_method)]
 
-        if smoothing_method == 'Chanvese':
-            c = Chanvese()
-            seg, phi, its = c.chanvese(self.im, mask, alpha = params['alpha'], max_its = params['max_its'], display = False, thresh = params['pixel_error_tolerance'])
+        c = Chanvese()
+        seg, phi, its = c.chanvese(self.imgray, mask, alpha = params['alpha'], max_its = params['max_its'], display = False, thresh = params['pixel_error_tolerance'])
 
-            cs = plt.contour(phi, 0)
-            for collection in cs.collections:
-                paths = collection.get_paths()
-                for path in paths:
-                    self.outs.append(path.vertices)
-        else:
-           self.outs = copy.copy(contours)    
+        cs = plt.contour(phi, 0)
+        for collection in cs.collections:
+            paths = collection.get_paths()
+            for path in paths:
+                self.outs.append(path.vertices)
+           
 
-        for out in outs:
+        for out in self.outs:
             c =  out.reshape(len(out), 1, 2).astype(np.float32)
             
             perimeter = cv2.arcLength(c,True)
 
+            #print perimeter
+
             als = np.array([0.] + [cv2.arcLength(c[:i],True) for i in range(1,len(c))])
 
-            t = np.linspace(0., perimeter, int(np.round(perimeter / pp)) * 2 + 1)
+            t = np.linspace(0., perimeter, int(np.round(perimeter / self.pp)) * 2 + 1)
             t = [np.argmin(np.abs(als - u)) for u in t]
-
-            out = out[t]
 
             for k in range(out.shape[0] // 2):
                 b = out[2*k:2*(k + 1) + 1,:]
+        
 
                 if len(b) == 3:
-                    beziers.append(b)
+                    self.beziers.append(b)
+
+                    #print b
+
+            #print self.beziers
 
         if plot:
             print('Plotting...')
@@ -991,11 +991,11 @@ class ContourizeMe(object):
 
     def save_to_svg(self):
         plt.clf()
-        if len(contours) > 0:
+        if len(self.contours) > 0:
             filename = tkFileDialog.asksaveasfilename()
 
             if filename != '':
-                plot_beziers(plot = False)
+                self.plot_beziers(plot = False)
 
                 mask = np.zeros(self.imgray.shape)
                 cv2.drawContours(mask, self.contours, -1, color = 1., thickness = -1)
@@ -1006,7 +1006,7 @@ class ContourizeMe(object):
                 paths = []
                 for b in self.beziers:
                     x1, y1 = b[0]
-                    if (5. < x1 < im.shape[1] - 5) and (5. < y1 < im.shape[0]):
+                    if (5. < x1 < self.im.shape[1] - 5) and (5. < y1 < self.im.shape[0]):
                         cx2, cy2 = b[1]
                         x2, y2 = b[2]
                         paths.append(CubicBezier(x1 + 1j * y1, x1 + 1j * y1, cx2 + 1j * cy2, x2 + 1j * y2))
@@ -1018,17 +1018,13 @@ class ContourizeMe(object):
                 # Update the information dictionary
                 self.update_info()
                 
-                if smoothing_method != 'None':
+                if self.smoothing_method != 'None':
                     ofile = Contours(self.contours, self.beziers, self.info, self.outs)
                 else:
                     ofile = Contours(self.contours, self.beziers, self.info)
 
                 pickle.dump(ofile, open('{0}.pkl'.format(filename), 'w'))
-
-                print('Plotting diameter visualization...')
-                for out in self.outs:
-                    plt.plot(out.T[:,0], out.T[:,1], c = 'r')
-
+                
                 for k in si:
                     x1, y1 = xys[k]
                     x2, y2 = xys[k] + nvs[k]*diameters[si.index(k)]
@@ -1047,19 +1043,16 @@ class ContourizeMe(object):
         self.info['Parameterization'] = self.pamVar.get()
 
         # Bound according to the chosen paramaterization
-        if pamVar.get() == 'Grayscale':
+        if self.pamVar.get() == 'Grayscale':
             self.info['Lower bound'] = r1
             self.info['Upper bound'] = r2
         else:
             self.info['Lower bound'] = (r1, g1, b1)
             self.info['Upper bound'] = (r2, g2, b2)
 
-        if blurVar.get() == 1:
-            self.info['Blurring'] = int(kernelSize.get())
-        else:
-            self.info['Blurring'] = None
+        self.info['Transforms'] = self.transformer.options
 
-        self.info['Smoothing'] = [smoothing_method, smoothing_parameters[smoothing_methods.index(smoothing_method)]]
+        self.info['Smoothing'] = [self.smoothing_method, self.smoothing_parameters[self.smoothing_methods.index(self.smoothing_method)]]
 
     def hide_show(self):
         if self.hidden:
