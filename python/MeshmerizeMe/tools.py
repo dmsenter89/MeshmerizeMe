@@ -547,7 +547,7 @@ def sussman_sign(D):
 
 # Convergence Test
 def convergence(p_mask, n_mask, thresh, c):
-    diff = p_mask - n_mask
+    diff = p_mask.astype(np.float32) - n_mask.astype(np.float32)
     n_diff = np.sum(np.abs(diff))
 
     #print n_diff

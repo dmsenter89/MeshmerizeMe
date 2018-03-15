@@ -371,6 +371,7 @@ class transformWindow(object):
         self.top=self.top=Toplevel(master)
         self.top.resizable(width=FALSE, height=FALSE)
         self.top.wm_title("Transforms")
+        self.top.protocol('WM_DELETE_WINDOW', self.hide)
 
         self.gui_object = gui_object
 
@@ -452,7 +453,10 @@ class transformWindow(object):
             
     def clear(self):
         self.filelist.delete(0,END)
-
+        
+        self.gui_object.transformer.options = []
+        self.gui_object.callback()
+        
     def add(self):
         string, option = self.get_current()
         self.filelist.insert(END, string)
@@ -546,6 +550,13 @@ class transformWindow(object):
             self.arg3_entry.grid_forget()
 
             self.argnames = []
+
+    def hide(self):
+        self.top.withdraw()
+
+    def show(self):
+        self.top.update()
+        self.top.deiconify()
             
 class Transformer(object):
     def __init__(self, gui_object):
@@ -560,6 +571,13 @@ class Transformer(object):
 
     def median_blur(self, im, ksize = 5):
         return cv2.medianBlur(im, ksize)
+
+    def laplacian(self, im, ksize = 5):
+        ret = cv2.Laplacian(im, cv2.CV_64F, ksize = ksize)
+        ret = ret - np.min(ret)
+        ret /= np.max(ret)
+
+        return np.round(ret*255).astype(np.uint8)
 
     def bilateral_filter(self, im, d = 9, sigmaColor = 75, sigmaSpace = 75):
         return cv2.bilateralFilter(im, d, sigmaColor, sigmaSpace)
@@ -791,13 +809,16 @@ class ContourizeMe(object):
         self.hideShowTransformedImage = Button(self.buttons, text = 'Show transformed image', command = self.hide_show)
         self.hideShowTransformedImage.grid(row = 2, column = 0, padx = 350, pady = 5, sticky = 'W')
 
+        self.transformWindow = transformWindow(self.root, self)
+        self.transformWindow.hide()
+        #self.root.wait_window(w.top)
+
         self.root.mainloop()
 
     def callback(self, e = None):
         tothresh = self.get_tothresh()
 
         self.pp = float(self.w4.get())
-        print self.pp
 
         _ = copy.copy(self.mim)
 
@@ -805,7 +826,7 @@ class ContourizeMe(object):
             if not self.smoothing:
                 self.contours, self.thresh = self.get_contours(tothresh)
 
-            cv2.drawContours(_, self.contours, -1, color=(0,255,0), thickness=2)
+            cv2.drawContours(_, self.contours, -1, color=(0,255,0), thickness=1)
 
             img = Image.fromarray(_)
             img_t = Image.fromarray(tothresh)
@@ -985,9 +1006,7 @@ class ContourizeMe(object):
         self.smoothing_parameters[self.smoothing_methods.index(self.smoothing_method)] = params
 
     def tfunc(self):
-
-        w = transformWindow(self.root, self)
-        self.root.wait_window(w.top)
+        self.transformWindow.show()
 
     def save_to_svg(self):
         plt.clf()
