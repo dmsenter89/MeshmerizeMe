@@ -739,6 +739,8 @@ class ContourizeMe(object):
         self.nContours.set('1')
         self.allContours = IntVar()
 
+        self.nContours.trace('w', lambda *args: self.callback())
+
         self.w4 = Scale(self.root, from_=3, to=300, orient=HORIZONTAL, command = self.callback)
         self.w4.set(int(self.pp))
 
@@ -1020,7 +1022,8 @@ class ContourizeMe(object):
                 cv2.drawContours(mask, self.contours, -1, color = 1., thickness = -1)
 
                 print('Computing normal vectors and diameter...')
-                dataf, xys, diameters, nvs, si = get_diameters(self.outs, self.beziers, mask)
+                if self.write_diameters:
+                    dataf, xys, diameters, nvs, si = get_diameters(self.outs, self.beziers, mask, acc_bound = self.percentile)
                         
                 paths = []
                 for b in self.beziers:

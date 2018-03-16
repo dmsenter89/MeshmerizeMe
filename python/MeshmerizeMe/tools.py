@@ -59,7 +59,12 @@ def brightness_v2(dd, out, sobelx, sobely):
 """
 Contours object
 ----------------
-Used to save the output from ContourizeMe.  Contains the points used to construct the 
+Used to save the output from ContourizeMe.  Contains the points used to construct the SVG file of cubic splines.  Can re-smooth, re-save,
+or compute some metrics based on the contours.
+
+
+    - Args:
+        self.uv: a list of arrays of
 """
 class Contours(object):
     def __init__(self, uv, beziers, info = None, uv_smoothed = None):
@@ -98,18 +103,18 @@ class Contours(object):
             return ret
 
     def perimeter(self, index = 0):
-        return cv2.arcLength(contours[index], True)
+        return cv2.arcLength(self.uv[index], True)
         
     def area(self, index = 0):
-        return cv2.contourArea(contours[index])
+        return cv2.contourArea(self.uv[index])
 
     def convex_hull(self, index = 0):
-        return cv2.convexHull(contours[index])
+        return cv2.convexHull(self.uv[index])
 
     def bounding_rectangle(self, index = 0):
-        return cv2.boundingRect(contours[index])
+        return cv2.boundingRect(self.uv[index])
 
-    def estimate_diameters(self, acc_bound = 100, radian_err = 7.5 * (np.pi/180.)):
+    def estimate_diameters(self, acc_bound = 100, radian_err = 3.5 * (np.pi/180.)):
         if self.im is None:
             self.im = cv2.imread(self.info['Image path'])
 
@@ -192,7 +197,7 @@ Attempts to estimate the diameters inside a contour.
         dictionary of diameters and their corresponding x and y coordinates of the midpoints
         
 """
-def get_diameters(contours, beziers, mask, acc_bound = 25, radian_err = 7.5 * (np.pi/180.)):
+def get_diameters(contours, beziers, mask, acc_bound = 100, radian_err = 7.5 * (np.pi/180.)):
     # normal vectors (normal from the the contour at a given point)
     nvs = []
 
