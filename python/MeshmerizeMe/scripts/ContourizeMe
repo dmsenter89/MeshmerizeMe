@@ -966,9 +966,6 @@ class ContourizeMe(object):
                 if len(b) == 3:
                     self.beziers.append(b)
 
-                    #print b
-
-            #print self.beziers
 
         if plot:
             print('Plotting...')
@@ -1024,6 +1021,21 @@ class ContourizeMe(object):
                 print('Computing normal vectors and diameter...')
                 if self.write_diameters:
                     dataf, xys, diameters, nvs, si = get_diameters(self.outs, self.beziers, mask, acc_bound = self.percentile)
+
+                    xx1 = dataf['x1']
+                    yy1 = dataf['y1']
+                    xx2 = dataf['x2']
+                    yy2 = dataf['y2']
+
+                    for k in range(len(xx1)):
+                        x1 = xx1[k]
+                        y1 = yy1[k]
+                        x2 = xx2[k]
+                        y2 = yy2[k]
+
+                        plt.plot([x1, x2], [y1, y2], c = 'b')
+
+                    plt.ylim(np.max(yy2) + 50, 0)
                         
                 paths = []
                 for b in self.beziers:
@@ -1032,6 +1044,7 @@ class ContourizeMe(object):
                         cx2, cy2 = b[1]
                         x2, y2 = b[2]
                         paths.append(CubicBezier(x1 + 1j * y1, x1 + 1j * y1, cx2 + 1j * cy2, x2 + 1j * y2))
+
 
                 print('Writing SVG file...')
                 
@@ -1046,12 +1059,6 @@ class ContourizeMe(object):
                     ofile = Contours(self.contours, self.beziers, self.info)
 
                 pickle.dump(ofile, open('{0}.pkl'.format(filename), 'w'))
-                
-                for k in si:
-                    x1, y1 = xys[k]
-                    x2, y2 = xys[k] + nvs[k]*diameters[si.index(k)]
-                    
-                    plt.plot([x1, x2], [y1, y2], c = 'b')
 
                 dataf = pd.DataFrame(dataf)
                 dataf.to_csv(filename + '-diameters.csv', index = False)

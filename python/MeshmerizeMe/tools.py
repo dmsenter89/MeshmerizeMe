@@ -86,44 +86,60 @@ class Contours(object):
 
         if method == 'Chanvese':
             if self.im is None:
-                self.im = cv2.imread(self.info['Image path'])
+                self.im = cv2.imread(self.info['Image location'])
 
-            mask = np.zeros(self.imshape[:2])
+            mask = np.zeros(self.im.shape[:2])
             cv2.drawContours(mask, self.uv, -1, color = 1., thickness = -1)
 
             c = Chanvese()
-            seg, phi, its = c.chanvese(self.im, mask, alpha = alpha, max_its = max_its, display = False, thresh = pixel_error_tolerance)
+            seg, phi, its = c.chanvese(self.im, mask, alpha = args['alpha'], max_its = args['max_its'], display = False, thresh = args['pixel_error_tolerance'])
 
             cs = plt.contour(phi, 0)
             for collection in cs.collections:
                 paths = collection.get_paths()
                 for path in paths:
                     ret.append(path.vertices)
+            plt.close()
 
             return ret
 
     def perimeter(self, index = 0):
-        return cv2.arcLength(self.uv[index], True)
+        return cv2.arcLength(np.round(self.uv_smoothed[index].reshape(len(self.uv_smoothed[index]), 1, 2)).astype(np.int32), True)
         
     def area(self, index = 0):
-        return cv2.contourArea(self.uv[index])
+        return cv2.contourArea(np.round(self.uv_smoothed[index].reshape(len(self.uv_smoothed[index]), 1, 2)).astype(np.int32))
 
     def convex_hull(self, index = 0):
-        return cv2.convexHull(self.uv[index])
+        return cv2.convexHull(np.round(self.uv_smoothed[index].reshape(len(self.uv_smoothed[index]), 1, 2)).astype(np.int32))
 
     def bounding_rectangle(self, index = 0):
-        return cv2.boundingRect(self.uv[index])
+        return cv2.boundingRect(np.round(self.uv_smoothed[index].reshape(len(self.uv_smoothed[index]), 1, 2)).astype(np.int32))
 
-    def estimate_diameters(self, acc_bound = 100, radian_err = 3.5 * (np.pi/180.)):
+    def estimate_diameters(self, acc_bound = 100, radian_err = 3.5 * (np.pi/180.), ksize = 5):
         if self.im is None:
-            self.im = cv2.imread(self.info['Image path'])
+            self.im = cv2.imread(self.info['Image location'])
 
-        mask = np.zeros(self.imshape[:2])
+        mask = np.zeros(self.im.shape[:2])
         cv2.drawContours(mask, self.uv, -1, color = 1., thickness = -1)
 
-        dataf, xys, diameters, nvs, si = get_diameters(self.uv_smoothed, self.beziers, mask, acc_bound = 100, radian_err = radian_err)
+        dataf, xys, diameters, nvs, si = get_diameters(self.uv_smoothed, self.beziers, mask, acc_bound = 100, radian_err = radian_err, ksize = 5)
 
         return xys, diameters
+
+    def visualize(self, image = None, color = (0,255,0), thickness = 2):
+        if image is None:
+            if self.im is None:
+                im = self.im = cv2.imread(self.info['Image location'])
+            else:
+                im = self.im
+
+        else:
+            im = image
+
+        cv2.drawContours(im, contours, -1, color = color, thickness = thickness)
+        plt.imshow(cv2.cvtColor(im, cv2.COLOR_BGR2RGB))
+        plt.show()
+            
 
     
 
@@ -197,7 +213,7 @@ Attempts to estimate the diameters inside a contour.
         dictionary of diameters and their corresponding x and y coordinates of the midpoints
         
 """
-def get_diameters(contours, beziers, mask, acc_bound = 100, radian_err = 7.5 * (np.pi/180.)):
+def get_diameters(contours, beziers, mask, acc_bound = 100, radian_err = 7.5 * (np.pi/180.), ksize = 5):
     # normal vectors (normal from the the contour at a given point)
     nvs = []
 
@@ -212,6 +228,10 @@ def get_diameters(contours, beziers, mask, acc_bound = 100, radian_err = 7.5 * (
     dataf['diameter'] = list()
     dataf['x_midpoint'] = list()
     dataf['y_midpoint'] = list()
+    dataf['x1'] = list()
+    dataf['y1'] = list()
+    dataf['x2'] = list()
+    dataf['y2'] = list()
 
     # the mask that we use to compute inside / outside brightness
     imgray = mask
@@ -247,8 +267,8 @@ def get_diameters(contours, beziers, mask, acc_bound = 100, radian_err = 7.5 * (
     dd = dd / np.hstack((np.reshape(norm, (len(norm), 1)), np.reshape(norm, (len(norm), 1))))
     ndd = -dd
 
-    sobelx = cv2.Sobel(imgray,cv2.CV_64F,1,0,ksize=5)
-    sobely = cv2.Sobel(imgray,cv2.CV_64F,0,1,ksize=5)
+    sobelx = cv2.Sobel(imgray,cv2.CV_64F,1,0,ksize=ksize)
+    sobely = cv2.Sobel(imgray,cv2.CV_64F,0,1,ksize=ksize)
 
     # compute the brightness inside and outside 
     vals1 = brightness_v2(dd, np.array(_), sobelx, sobely)
@@ -312,18 +332,17 @@ def get_diameters(contours, beziers, mask, acc_bound = 100, radian_err = 7.5 * (
 
             d, index = tree.query(xy[0])
             diameters.append(d)
+
+            dataf['diameter'].append(d)
+            dataf['x1'].append(xy[0][0])
+            dataf['y1'].append(xy[0][1])
+            dataf['x2'].append(eligible[index][0])
+            dataf['y2'].append(eligible[index][1])
+            dataf['x_midpoint'].append((dataf['x2'][-1] + dataf['x1'][-1]) / 2.)
+            dataf['y_midpoint'].append((dataf['y2'][-1] + dataf['y1'][-1]) / 2.)
+            
             #print d
             si.append(i)
-
-    for k in si:
-        x1, y1 = xys[k]
-        x2, y2 = xys[k] + nvs[k]*diameters[si.index(k)]
-        xm, ym = xys[k] + nvs[k]*diameters[si.index(k)]*0.5
-
-        
-        dataf['diameter'].append(diameters[si.index(k)])
-        dataf['x_midpoint'].append(xm)
-        dataf['y_midpoint'].append(ym)
 
     return dataf, xys, diameters, nvs, si
 
