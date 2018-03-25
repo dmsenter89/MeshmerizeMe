@@ -101,59 +101,6 @@ import progressbar
 
 import random
 
-class Transformer(object):
-    def __init__(self, options = []):
-        self.options = options
-
-    def average_blur(self, im, kernel = (5, 5)):
-        return cv2.blur(im, kernel)
-
-    def gaussian_blur(self, im, kernel = (5, 5)):
-        return cv2.GaussianBlur(im, kernel, 0)
-
-    def median_blur(self, im, kernel = 5):
-        return cv2.medianBlur(im, 5)
-
-    def bilateral_filter(self, im, d = 9, sigmaColor = 75, sigmaSpace = 75):
-        return cv2.bilateralFilter(im, d, sigmaColor, sigmaSpace)
-
-    def adaptive_gaussian_threshold(self, im, blockSize = 11):
-        return cv2.adaptiveThreshold(im,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,cv.THRESH_BINARY,blockSize,2).astype(np.uint8)*255
-
-    def otsu_threshold(self):
-        return cv2.threshold(im,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU).astype(np.uint8)*255
-
-    def morph_transform(self, im, transform = 'Erode', kernel = (5,5)):
-        kernel = np.ones(kernel, dtype = np.uint8)
-
-        if transform == 'Erode':
-            return cv2.erode(im, kernel, iterations = 1)
-        elif transform == 'Dilate':
-            return cv2.dilate(im, kernel, iterations = 1)
-        elif transform == 'Closing':
-            return cv2.morphologyEx(im, cv2.MORPH_CLOSE, kernel)
-        elif transform == 'Opening':
-            return cv2.morphologyEx(im, cv2.MORPH_OPEN, kernel)
-
-    def transform(self, ret):
-        for o in self.options:
-            if o[0] == 'Average Blur':
-                ret = self.average_blur(ret, **o[1])
-            elif o[0] == 'Gaussian Blur':
-                ret = self.gaussian_blur(ret, **o[1])
-            elif o[0] == 'Median Blur':
-                ret = self.median_blur(ret, **o[1])
-            elif o[0] == 'Bilateral Filter':
-                ret = self.bilateral_filter(ret, **o[1])
-            elif o[0] == 'Adaptive Gaussian Threshold':
-                ret = self.adaptive_gaussian_threshold(ret, **o[1])
-            elif o[0] == 'Otsu Threshold':
-                ret = self.otsu_threshold(ret, **o[1])
-            elif o[0] == 'Morphological Transform':
-                ret = self.morph_transform(ret, **o[1])
-
-        return ret
-
 class AutoScrollbar(Scrollbar):
     ''' A scrollbar that hides itself if it's not needed.
         Works only if you use the grid geometry manager '''
@@ -296,7 +243,7 @@ class Zoom_Advanced(Frame):
 # popup window for the options dialog
 class optionsPopupWindow(object):
     # options as they are are passed in upon the creation of the window
-    def __init__(self, master, smoothing_methods, smoothing_parameters, percentile, write_diameters, smoothing_method):
+    def __init__(self, master, smoothing_methods, smoothing_parameters, percentile, write_diameters, smoothing_method, drawWidth):
         self.top=self.top=Toplevel(master)
         self.top.resizable(width=FALSE, height=FALSE)
         self.top.wm_title("Options")
@@ -315,18 +262,25 @@ class optionsPopupWindow(object):
         self.wdiams = IntVar(self.top)
         self.wdiams.set(0)
 
+        self.drawWidth = IntVar(self.top)
+        self.drawWidth.set(drawWidth)
+
         self.acc_p = StringVar(self.top)
         self.acc_p.set(str(percentile))
         
         if write_diameters:
             self.wdiams.set(1)
 
-        c = Checkbutton(general, text="Compute and write diameter info", variable=self.wdiams)
-        c.grid(row = 0, padx = 5, pady = 5)
+        Label(general, text = 'Drawing thickness (pixels): ').grid(row = 0, padx = 5, pady = 5)
+        self.drawWidth_entry = Entry(general, textvariable = self.drawWidth, width = 10, bd = 3)
+        self.drawWidth_entry.grid(row = 0, column = 1, padx = 5)
 
-        Label(general, text = 'Percentile of acceleration histogram:').grid(row = 1, padx = 5, pady = 5)
+        c = Checkbutton(general, text="Compute and write diameter info", variable=self.wdiams)
+        c.grid(row = 1, padx = 5, pady = 5)
+
+        Label(general, text = 'Percentile of acceleration histogram:').grid(row = 2, padx = 5, pady = 5)
         self.acc_p_entry = Entry(general, textvariable = self.acc_p, width = 10, bd = 3)
-        self.acc_p_entry.grid(row = 1, column = 1, padx = 5)
+        self.acc_p_entry.grid(row = 2, column = 1, padx = 5)
         
         parameters = LabelFrame(self.top, text="Smoothing parameters", padx=5, pady=5,  fg = '#56A0D3')
 
@@ -391,9 +345,7 @@ class transformWindow(object):
         self.transformVar.set('Average Blur')
 
         Label(self.top, text = 'Transform:').grid(row = 0, padx = 10, pady = 5, sticky = 'W')
-        method = OptionMenu(self.top, self.transformVar, 'Average Blur', 'Gaussian Blur', 'Median Blur', 'Bilateral Filter', 'Adaptive Gaussian Threshold', \
-                            'Otsu Threshold', 'Morphological Erosion', 'Morphological Dilation', 'Morphological Closing', \
-                            'Morphological Opening', 'Morphological Gradient', command = self.callback)
+        method = OptionMenu(self.top, self.transformVar, 'Average Blur', 'Gaussian Blur', 'Median Blur', 'Bilateral Filter', command = self.callback)
         method.grid(row = 0, padx = 100, pady = 10, sticky = 'W')
 
         self.general = LabelFrame(self.top, text = 'Parameters', padx = 5, pady = 5, fg = '#56A0D3')
@@ -739,6 +691,8 @@ class ContourizeMe(object):
         self.nContours.set('1')
         self.allContours = IntVar()
 
+        self.drawWidth = 1
+
         self.nContours.trace('w', lambda *args: self.callback())
 
         self.w4 = Scale(self.root, from_=3, to=300, orient=HORIZONTAL, command = self.callback)
@@ -813,7 +767,6 @@ class ContourizeMe(object):
 
         self.transformWindow = transformWindow(self.root, self)
         self.transformWindow.hide()
-        #self.root.wait_window(w.top)
 
         self.root.mainloop()
 
@@ -828,7 +781,7 @@ class ContourizeMe(object):
             if not self.smoothing:
                 self.contours, self.thresh = self.get_contours(tothresh)
 
-            cv2.drawContours(_, self.contours, -1, color=(0,255,0), thickness=1)
+            cv2.drawContours(_, self.contours, -1, color=(0,255,0), thickness=self.drawWidth)
 
             img = Image.fromarray(_)
             img_t = Image.fromarray(tothresh)
@@ -892,11 +845,6 @@ class ContourizeMe(object):
                 thresh = cv2.inRange(tothresh, (r1, g1, b1), (r2, g2, b2))
         else:
             thresh = tothresh
-
-
-        for o in self.transformer.options:
-            if 'Morphological' in o[0]:
-                thresh = self.transformer.morph_transform(thresh, **o[1])
 
         # contour finding with OpenCV 2 or 3
         _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
@@ -984,7 +932,7 @@ class ContourizeMe(object):
         root = Tk()
         root.withdraw()
         
-        w = optionsPopupWindow(root, self.smoothing_methods, self.smoothing_parameters, self.percentile, self.write_diameters, self.smoothing_method)
+        w = optionsPopupWindow(root, self.smoothing_methods, self.smoothing_parameters, self.percentile, self.write_diameters, self.smoothing_method, self.drawWidth)
         root.wait_window(w.top)
 
         if w.wdiams.get() == 1:
@@ -993,6 +941,8 @@ class ContourizeMe(object):
             self.write_diameters = False
 
         self.percentile = float(w.acc_p.get())
+
+        self.drawWidth = w.drawWidth.get()
         
         self.smoothing_method = w.smoothingMethod.get()
         params = self.smoothing_parameters[self.smoothing_methods.index(self.smoothing_method)]
