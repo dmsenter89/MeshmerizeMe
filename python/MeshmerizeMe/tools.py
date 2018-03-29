@@ -5,6 +5,7 @@
 # ======================================================
 # Some supporting functions
 
+from __future__ import print_function
 from scipy.spatial import KDTree
 import numpy as np
 import cv2
@@ -360,7 +361,7 @@ class Chanvese(object):
     def chanvese(self, I, init_mask, max_its=200, alpha=0.2,
                  thresh=2, color='r', display=False):
         I = I.astype(np.float)
-        print 'Chanvese smoothing...'
+        print ('Chanvese smoothing...')
 
         # Create a signed distance map (SDF) from mask
         phi = mask2phi(init_mask)
