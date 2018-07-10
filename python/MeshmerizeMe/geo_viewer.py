@@ -4,7 +4,7 @@
 import os
 import argparse
 import matplotlib.pyplot as plt
-from input_parser import fetch_input_params
+from MeshmerizeMe.input_parser import fetch_input_params
 
 def read_vertices(fname):
     """
@@ -36,6 +36,7 @@ def plot_points(vec, params, display=True, path=None):
     plt.xlabel('Width in meters')
     plt.ylabel('Height in meters')
     plt.axis([0, params['Lx']*1.1, 0, params['Ly']*1.1])
+    plt.axes().set_aspect('equal')
     plt.grid(True)
     if display:
         plt.show()

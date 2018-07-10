@@ -1,0 +1,22 @@
+Metadata-Version: 1.1
+Name: MeshmerizeMe
+Version: 1.0.dev0
+Summary: MeshmerizeMe is a python script intended to convert SVG files into geometry files for use with IBAMR and IB2D. Also includes the ability to plot .vertex files to verify the geometry looks as intended.
+Home-page: https://dmsenter89.github.io/project/meshmerizeme/
+Author: Michael Senter and Dylan Ray
+Author-email: ddray1993@gmail.com
+License: GNU GPLv3
+Description: UNKNOWN
+Keywords: immersed boundary,mesh,computer vision
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: OS Independent
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Topic :: Multimedia :: Graphics
+Classifier: Topic :: Multimedia :: Graphics :: 2D Modeling
+Classifier: Topic :: Multimedia :: Graphics :: Capture :: Digital Camera
+Classifier: Topic :: Multimedia :: Video
+Classifier: Topic :: Scientific/Engineering
