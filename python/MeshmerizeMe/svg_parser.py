@@ -18,7 +18,8 @@ ISSUES:
 
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
-from svg.path import parse_path
+#from svg.path import parse_path
+from svgpathtools import parse_path
 from numpy import linspace
 from MeshmerizeMe.geo_obj import Vertex, writeFile
 import re
