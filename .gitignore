@@ -1,1 +1,10 @@
+# binary files
 __pycache__
+*.py[cod]
+
+# Packaging related files
+build/
+develop-eggs/
+dist/
+eggs/
+

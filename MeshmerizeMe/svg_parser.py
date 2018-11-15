@@ -18,7 +18,8 @@ ISSUES:
 
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
-from svg.path import parse_path
+#from svg.path import parse_path
+from svgpathtools import parse_path
 from numpy import linspace
 from MeshmerizeMe.geo_obj import Vertex, writeFile
 import re
@@ -110,8 +111,11 @@ def coord_transform(z, params):
     return complex(xnew,ynew)
 
 
-def points_on_path(path, params):
+def points_on_path(path, params, method=1):
     """Figure out how many points are necessary and return those.
+
+    Two methods are currently implemented; legacy method retained at the moment
+    while debugging.
 
     Args:
         path: a path object.
@@ -121,12 +125,25 @@ def points_on_path(path, params):
         numpy array with the necessary number of evenly distributed points
         to dissect path objects at the necessary density.
     """
-    length = path.length()  # lenght of path in svg system
-    z = complex(length, params['height'])
-    new_len = abs(coord_transform(z, params))
-    num_of_pts = new_len//params['Ds']
-    num_of_pts += 1
-    return linspace(0,1, num_of_pts)
+    if method==1:
+        length = path.length()  # lenght of path in svg system
+        z = complex(length, params['height'])
+        new_len = abs(coord_transform(z, params))
+        num_of_pts = new_len//params['Ds']
+        num_of_pts += 1
+        point_array = linspace(0,1, num_of_pts)
+    else:
+        # setup two temporary dummy points
+        points = []
+        p0 = 0
+        p1 = 0
+        ds = params['Ds']
+        while p1<1:
+            p1 = p0 + ds / abs(path.derivative(p0))
+            p0 = p1
+            points.append(p0)
+        point_array = np.asarray(points)
+    return point_array
 
 
 def make_vertices(path_list, params):
@@ -215,7 +232,7 @@ class Svg():
         Class function that finds the space on which the elements in the
         SVG file are defined.
         """
-        x,y,width,heigth = (0,0,-1,-1)  # default initialize, to be overwritten
+        x,y,width,height = (0,0,-1,-1)  # default initialize, to be overwritten
         if 'viewBox' in self.rattrib:
             # easiest way to handles
             boxstr = self.rattrib['viewBox']
@@ -235,6 +252,7 @@ class Svg():
 
             # now create boxstr for Space class
             boxstr = "{} {} {} {}".format(x,y,width,height)
+        
         mySpace = Space(boxstr)
         return mySpace
 
