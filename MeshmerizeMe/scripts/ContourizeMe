@@ -12,9 +12,12 @@ paramaterization of pixel space (Grayscale, RGB, HSV).
 
 from MeshmerizeMe import get_diameters, Chanvese, Contours
 
-from Tkinter import *
+try: # for Py3
+    from tkinter import *
+except: # legacy Py2 support
+    from Tkinter import *
+    import tkFileDialog
 import pickle
-import tkFileDialog
 import cv2
 import numpy as np
 import logging
@@ -152,7 +155,7 @@ class Zoom_Advanced(Frame):
         self.delta = 1.3  # zoom magnitude
         # Put image into container rectangle and use it to set proper coordinates to the image
         self.container = self.canvas.create_rectangle(0, 0, self.width, self.height, width=0)
-        
+
         self.show_image()
 
     def scroll_y(self, *args, **kwargs):
@@ -180,7 +183,7 @@ class Zoom_Advanced(Frame):
         y = self.canvas.canvasy(event.y)
 
         #print event.delta
-        
+
         bbox = self.canvas.bbox(self.container)  # get image area
         if bbox[0] < x < bbox[2] and bbox[1] < y < bbox[3]: pass  # Ok! Inside the image
         else: return  # zoom only inside image area
@@ -267,7 +270,7 @@ class optionsPopupWindow(object):
 
         self.acc_p = StringVar(self.top)
         self.acc_p.set(str(percentile))
-        
+
         if write_diameters:
             self.wdiams.set(1)
 
@@ -281,7 +284,7 @@ class optionsPopupWindow(object):
         Label(general, text = 'Percentile of acceleration histogram:').grid(row = 2, padx = 5, pady = 5)
         self.acc_p_entry = Entry(general, textvariable = self.acc_p, width = 10, bd = 3)
         self.acc_p_entry.grid(row = 2, column = 1, padx = 5)
-        
+
         parameters = LabelFrame(self.top, text="Smoothing parameters", padx=5, pady=5,  fg = '#56A0D3')
 
         Label(self.top, text = 'Smoothing method: ').grid(row = 1, column = 0, padx = 10, pady = 5, sticky = W)
@@ -299,7 +302,7 @@ class optionsPopupWindow(object):
 
             self.max_its = StringVar(self.top)
             self.max_its.set(str(params['max_its']))
-                
+
             Label(parameters, text = 'Alpha (higher = smoother): ').grid(row = 0, column = 0, padx = 5, pady = 5, sticky = W)
             self.alpha = Entry(parameters, textvariable = self.alphaVal, width = 10, bd = 3)
             self.alpha.grid(row = 0, padx = 200, pady = 5, sticky = W)
@@ -351,7 +354,7 @@ class transformWindow(object):
         self.general = LabelFrame(self.top, text = 'Parameters', padx = 5, pady = 5, fg = '#56A0D3')
 
         self.args = [self.arg1, self.arg2, self.arg3]
-        
+
         self.arg1_label = Label(self.general, text = 'Kernel size (pixels):')
         self.arg1_label.grid(row = 0, padx = 10, pady = 5, sticky = 'W')
         self.arg1_entry = Entry(self.general, textvariable = self.arg1, width = 5)
@@ -402,13 +405,13 @@ class transformWindow(object):
             options['transform'] = self.transformVar.get().split(' ')[-1]
 
         return ret, [self.transformVar.get(), options]
-            
+
     def clear(self):
         self.filelist.delete(0,END)
-        
+
         self.gui_object.transformer.options = []
         self.gui_object.callback()
-        
+
     def add(self):
         string, option = self.get_current()
         self.filelist.insert(END, string)
@@ -429,14 +432,14 @@ class transformWindow(object):
         return
 
     def callback(self, event):
-            
+
         if self.transformVar.get() == 'Average Blur' or self.transformVar.get() == 'Median Blur' or 'Morphological' in self.transformVar.get():
             self.arg1_label.grid(row = 0, padx = 10, pady = 5, sticky = 'W')
             self.arg1_entry.grid(row = 0, padx = 145, sticky = 'W')
-            
+
             self.arg1_label.config(text = 'Kernel size (pixels):')
             self.arg1.set('5')
-            
+
             self.arg2_label.grid_forget()
             self.arg2_entry.grid_forget()
 
@@ -463,7 +466,7 @@ class transformWindow(object):
         elif self.transformVar.get() == 'Bilateral Filter':
             self.arg1_label.grid(row = 0, padx = 10, pady = 5, sticky = 'W')
             self.arg1_entry.grid(row = 0, padx = 145, sticky = 'W')
-            
+
             self.arg2_label.grid(row = 1, padx = 10, pady = 5, sticky = 'W')
             self.arg2_entry.grid(row = 1, padx = 125, sticky = 'W')
 
@@ -489,7 +492,7 @@ class transformWindow(object):
 
             self.arg3_label.grid_forget()
             self.arg3_entry.grid_forget()
-            
+
             self.argnames = ['blockSize']
         elif self.transformVar.get() == 'Otsu Threshold':
             self.arg1_label.grid_forget()
@@ -509,7 +512,7 @@ class transformWindow(object):
     def show(self):
         self.top.update()
         self.top.deiconify()
-            
+
 class Transformer(object):
     def __init__(self, gui_object):
         self.options = []
@@ -555,7 +558,7 @@ class Transformer(object):
 
     def transform(self, ret):
         self.gui_object.manualThresh = True
-        
+
         for o in self.options:
             if o[0] == 'Average Blur':
                 ret = self.average_blur(ret, **o[1])
@@ -574,8 +577,8 @@ class Transformer(object):
 
         self.gui_object.set_state()
 
-        return ret        
-            
+        return ret
+
 class ContourizeMe(object):
     def __init__(self, im_path):
         """
@@ -647,7 +650,7 @@ class ContourizeMe(object):
             self.im = cv2.cvtColor(self.imgray, cv2.COLOR_GRAY2BGR)
             print('Working with grayscale image')
 
-        self.info = dict()        
+        self.info = dict()
         self.info['Image location'] = os.path.abspath(im_path)
         self.mask = np.zeros(self.imgray.shape, dtype = np.uint8)
 
@@ -662,11 +665,11 @@ class ContourizeMe(object):
             _, contours, hierarchy = _
         else:
             contours, hierarchy = _
-        
+
         self.contours = sorted(contours, key = len, reverse = True)
         for j in range(1):
             cv2.drawContours(self.mim, contours, j, color=(0,0,0), thickness=-1)
-                
+
         # Create the window
         self.root = Tk()
         self.root.resizable(width=False, height=False)
@@ -699,7 +702,7 @@ class ContourizeMe(object):
         self.w4.set(int(self.pp))
 
         #kernelSize.trace("w", lambda name, index, mode, kernelSize=kernelSize: callback(kernelSize))
-         
+
         self.root.protocol('WM_DELETE_WINDOW', self.quit_all)
 
         Label(self.root, text = 'Gray / Red / Hue').grid(row = 6, column = 0, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
@@ -717,7 +720,7 @@ class ContourizeMe(object):
         self.w6 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
         self.w6.set(255)
         self.w6.grid(row = 0, column = 3,  padx = 10, pady = 5,  sticky = 'NS', rowspan = 6)
-        
+
         Label(self.root, text = 'Blue / Value').grid(row = 6, column = 4, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
         self.w7 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
         self.w7.set(0)
@@ -738,7 +741,7 @@ class ContourizeMe(object):
         self.w3.set(1)
         self.w3.grid(row = 8, padx = 10, pady = 5, sticky = 'EW', columnspan = 6)
         """
-        
+
         Label(self.root, text = 'Perimeter per Bezier:').grid(row = 9, padx = 10, columnspan = 6, sticky = 'W')
         self.w4.set(int(self.pp))
         self.w4.grid(row = 10, padx = 10, pady = 5, sticky = 'EW', columnspan = 6)
@@ -749,7 +752,7 @@ class ContourizeMe(object):
         Label(self.buttons, text = 'Parameterization:').grid(row = 0, column = 0, padx = 10, pady = 5, sticky = 'W')
         method = OptionMenu(self.buttons, self.pamVar, 'Grayscale', 'RGB', 'HSV', command = self.callback)
         method.grid(row = 0, column = 0, padx = 125, pady = 5, sticky = 'W')
-        
+
         save = Button(self.buttons, text = "Save to SVG", command = self.save_to_svg)
         save.grid(row = 2, column = 0, padx = 10, pady = 5, sticky = 'W')
 
@@ -800,8 +803,8 @@ class ContourizeMe(object):
             return self.transformer.transform(self.im)
         elif self.pamVar.get() == 'HSV':
             return self.transformer.transform(self.hsv_im)
-        
-   
+
+
     def get_bounds(self):
         # Grab the chosen bounds
         r1 = int(np.round(self.w1.get()))
@@ -833,7 +836,7 @@ class ContourizeMe(object):
 
     def get_contours(self, tothresh):
         r1, r2, b1, b2, g1, g2 = self.get_bounds()
-        
+
         # Bound according to the chosen paramaterization
         if self.manualThresh:
             if self.pamVar.get() == 'Grayscale':
@@ -853,13 +856,13 @@ class ContourizeMe(object):
             _, contours, hierarchy = _
         else:
             contours, hierarchy = _
-            
+
         contours = sorted(contours, key = len, reverse = True)
 
         if self.allContours.get() != 1:
             try:
                 nContours = int(self.nContours.get())
-            
+
                 if len(contours) > nContours:
                     contours = contours[:nContours]
             except:
@@ -893,11 +896,11 @@ class ContourizeMe(object):
             paths = collection.get_paths()
             for path in paths:
                 self.outs.append(path.vertices)
-           
+
 
         for out in self.outs:
             c =  out.reshape(len(out), 1, 2).astype(np.float32)
-            
+
             perimeter = cv2.arcLength(c,True)
 
             #print perimeter
@@ -909,7 +912,7 @@ class ContourizeMe(object):
 
             for k in range(out.shape[0] // 2):
                 b = out[2*k:2*(k + 1) + 1,:]
-        
+
 
                 if len(b) == 3:
                     self.beziers.append(b)
@@ -931,7 +934,7 @@ class ContourizeMe(object):
         # make an options window and wait for it
         root = Tk()
         root.withdraw()
-        
+
         w = optionsPopupWindow(root, self.smoothing_methods, self.smoothing_parameters, self.percentile, self.write_diameters, self.smoothing_method, self.drawWidth)
         root.wait_window(w.top)
 
@@ -943,7 +946,7 @@ class ContourizeMe(object):
         self.percentile = float(w.acc_p.get())
 
         self.drawWidth = w.drawWidth.get()
-        
+
         self.smoothing_method = w.smoothingMethod.get()
         params = self.smoothing_parameters[self.smoothing_methods.index(self.smoothing_method)]
 
@@ -960,7 +963,10 @@ class ContourizeMe(object):
     def save_to_svg(self):
         plt.clf()
         if len(self.contours) > 0:
-            filename = tkFileDialog.asksaveasfilename()
+            try:
+                filename = filedialog.asksaveasfilename()
+            except:
+                filename = tkFileDialog.asksaveasfilename()
 
             if filename != '':
                 self.plot_beziers(plot = False)
@@ -986,7 +992,7 @@ class ContourizeMe(object):
                         plt.plot([x1, x2], [y1, y2], c = 'b')
 
                     plt.ylim(np.max(yy2) + 50, 0)
-                        
+
                 paths = []
                 for b in self.beziers:
                     x1, y1 = b[0]
@@ -996,13 +1002,13 @@ class ContourizeMe(object):
                         paths.append(CubicBezier(x1 + 1j * y1, x1 + 1j * y1, cx2 + 1j * cy2, x2 + 1j * y2))
 
 
-                print('Writing SVG file...')
-                
+                print('Writing SVG file to "{}"'.format(filename + '.svg'))
+
                 wsvg(paths, filename = filename + '.svg')
 
                 # Update the information dictionary
                 self.update_info()
-                
+
                 if self.smoothing_method != 'None':
                     ofile = Contours(self.contours, self.beziers, self.info, self.outs)
                 else:
@@ -1044,10 +1050,10 @@ class ContourizeMe(object):
             self.hideShowTransformedImage.config(text = 'Show transformed image')
 
             self.hidden = True
-        
-        
 
-         
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="allows the user to slide to a values for 8-bit pixel thresholding")
     parser.add_argument("image", default = "None")
@@ -1056,9 +1062,3 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     ContourizeMe(args.image)
-
-    
-    
-    
-
-

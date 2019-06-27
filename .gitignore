@@ -1,3 +1,5 @@
+.DS_Store
+
 # binary files
 __pycache__
 *.py[cod]

@@ -9,7 +9,7 @@ IBAMR.
 
 ISSUES:
     The SVG file needs to be in a very specific format for this to work.
-    1) the file needs to have it's height and width given in pixels, as simple
+    1) the file needs to have its height and width given in pixels, as simple
         float numbers, not in millimeters or anything, OR specify a viewBox.
     2) The svg *cannot* be using the translate feature or any other feature
         that alters its coordinate system relative to the viewbox.
@@ -21,6 +21,7 @@ from tqdm import tqdm
 #from svg.path import parse_path
 from svgpathtools import parse_path
 from numpy import linspace
+import numpy as np
 from MeshmerizeMe.geo_obj import Vertex, writeFile
 import re
 
@@ -111,11 +112,8 @@ def coord_transform(z, params):
     return complex(xnew,ynew)
 
 
-def points_on_path(path, params, method=1):
+def points_on_path(path, params):
     """Figure out how many points are necessary and return those.
-
-    Two methods are currently implemented; legacy method retained at the moment
-    while debugging.
 
     Args:
         path: a path object.
@@ -125,24 +123,37 @@ def points_on_path(path, params, method=1):
         numpy array with the necessary number of evenly distributed points
         to dissect path objects at the necessary density.
     """
-    if method==1:
-        length = path.length()  # lenght of path in svg system
-        z = complex(length, params['height'])
-        new_len = abs(coord_transform(z, params))
-        num_of_pts = new_len//params['Ds']
-        num_of_pts += 1
-        point_array = linspace(0,1, num_of_pts)
-    else:
-        # setup two temporary dummy points
-        points = []
-        p0 = 0
-        p1 = 0
-        ds = params['Ds']
-        while p1<1:
-            p1 = p0 + ds / abs(path.derivative(p0))
-            p0 = p1
-            points.append(p0)
-        point_array = np.asarray(points)
+    #if method==1:
+    #    length = path.length()  # lenght of path in svg system
+    #    z = complex(length, params['height'])
+    #    new_len = abs(coord_transform(z, params))
+    #    num_of_pts = new_len//params['Ds']
+    #    num_of_pts += 1
+    #    point_array = linspace(0,1, num_of_pts)
+    #else:
+    # setup two temporary dummy points
+    points = [0]
+    p0 = 0
+    p1 = 0
+    ds = params['Ds']
+    # keep track   of the ratio of 2nd to 1st deriv
+    rato = np.abs(path.derivative(p0,2))/np.abs(path.derivative(p0,1))
+    while p1<1:
+        p1 = p0 + ds / np.abs(path.derivative(p0)) 
+        if p1>1.01: # make sure we don't run outside of [0,1]
+            break
+        ratn = np.abs(path.derivative(p1,2))/np.abs(path.derivative(p1))
+        if ratn/rato > 3: # large change in ratio, be careful
+            try:
+                # use previous two points as step instead
+                p1 = p0 + (points[-1]-points[-2])
+            except:
+                # we don't have two steps available yet
+                p1 = p0 + (1/3)*(p1-p0) # play with differnt vals
+            ratn = np.abs(path.derivative(p1,2))/np.abs(path.derivative(p1))
+        points.append(p1)
+        p0 = p1
+    point_array = np.asarray(points)
     return point_array
 
 
@@ -252,7 +263,7 @@ class Svg():
 
             # now create boxstr for Space class
             boxstr = "{} {} {} {}".format(x,y,width,height)
-        
+
         mySpace = Space(boxstr)
         return mySpace
 
