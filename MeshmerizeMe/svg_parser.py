@@ -22,7 +22,7 @@ from tqdm import tqdm
 from svgpathtools import parse_path
 from numpy import linspace
 import numpy as np
-from MeshmerizeMe.geo_obj import Vertex, writeFile
+from .geo_obj import Vertex, writeFile
 import re
 
 

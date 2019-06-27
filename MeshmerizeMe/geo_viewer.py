@@ -4,7 +4,7 @@
 import os
 import argparse
 import matplotlib.pyplot as plt
-from MeshmerizeMe.input_parser import fetch_input_params
+from .input_parser import fetch_input_params
 
 def read_vertices(fname):
     """
