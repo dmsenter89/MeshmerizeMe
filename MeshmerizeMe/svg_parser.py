@@ -272,8 +272,27 @@ class Svg():
         Quick function that generates a list of all path and other geometric
         objects in the SVG.
         """
-        objs = [SvgObject(child) for child in rnode]
-        return objs
+        objects = []
+        element_tree_stack = []
+
+        def push_element_and_its_parent_to_stack(element, parent):
+            element_tree_stack.append( { "element" : element, "parent" : parent } )
+
+        push_element_and_its_parent_to_stack(rnode, None)
+
+        while len(element_tree_stack) > 0:
+            curElementAndParent = element_tree_stack.pop()
+            curElement = curElementAndParent["element"]
+            parentOfCurElement = curElementAndParent["parent"]
+            
+            curElementAsSvgObject = SvgObject(curElement)
+            curElementAsSvgObject.parent = parentOfCurElement            
+            objects.append(curElementAsSvgObject)
+
+            for child_element in list(curElement):
+                push_element_and_its_parent_to_stack(child_element, curElementAsSvgObject)
+
+        return objects
 
     def get_paths(self):
         paths = []
@@ -301,6 +320,7 @@ class SvgObject():
         else:
             self.type = node.tag    # str holds name of object
         self.attr = node.attrib  # dic with attributes of element
+        self.parent = None
 
     def get(self, attribute):
         """ Getter returns an attribute from the attribute dictionary as string.
