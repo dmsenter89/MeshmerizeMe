@@ -21,6 +21,13 @@ def SVG_TEST_STRUCTURES():
             }
     return svg_test_structures
 
+@pytest.fixture
+def PARSED_SVG_TEST_STRUCTURES(SVG_TEST_STRUCTURES):
+    parsed_svg_test_structures = {}
+    for file_name in SVG_TEST_STRUCTURES:
+        parsed_svg_test_structures[file_name] = svg_parser.Svg( SVG_TEST_STRUCTURES[file_name]["absolute_file_path"] ) 
+    return parsed_svg_test_structures
+
 def test_get_paths():
     assert False, "This test is unimplemented."
 
@@ -52,13 +59,10 @@ def test_Space_get_max_size():
 
 
 
-def test_Svg___init__(SVG_TEST_STRUCTURES):   
-    svg_file_structures = {}
-    for file_name in SVG_TEST_STRUCTURES:
-        svg_file_structures[file_name] = svg_parser.Svg( SVG_TEST_STRUCTURES[file_name]["absolute_file_path"] ) 
+def test_Svg___init__(PARSED_SVG_TEST_STRUCTURES):   
 
-    for file_name in svg_file_structures:
-        svg = svg_file_structures[file_name]
+    for file_name in PARSED_SVG_TEST_STRUCTURES:
+        svg = PARSED_SVG_TEST_STRUCTURES[file_name]
         assert svg.space is not None, "Should have a non-null 'space' property."
         assert svg.space.x == 0 and svg.space.y == 0, "Space should have an origin at (0,0)."
         assert svg.space.width == 300 and svg.space.height == 300, "Space should have a width and height of 300."
@@ -67,13 +71,13 @@ def test_Svg___init__(SVG_TEST_STRUCTURES):
         assert svg.objcts[0].parent is None, "Root element should have a null parent property."
         assert svg.objcts[1].parent == svg.objcts[0], "Root element should be the parent of the second element in the 'objcts' property."
 
-    assert len( svg_file_structures["box"].objcts ) == 2, "Should have 2 SVG element objects."
-    assert len( svg_file_structures["box_paths"].objcts ) == 5, "Should have 5 SVG element objects."
-    assert len( svg_file_structures["box_paths_grouped"].objcts ) == 6, "Should have 6 SVG element objects."
-    assert len( svg_file_structures["box_paths_nested-grouped"].objcts ) == 9, "Should have 9 SVG element objects."
-    assert len( svg_file_structures["box_paths_nested-grouped_translated"].objcts ) == 9, "Should have 9 SVG element objects."
-    assert len( svg_file_structures["box_paths_nested-grouped_many-transforms"].objcts ) == 9, "Should have 9 SVG element objects."
-    assert len( svg_file_structures["complex_shape"].objcts ) == 3, "Should have 3 SVG element objects."
+    assert len( PARSED_SVG_TEST_STRUCTURES["box"].objcts ) == 2, "Should have 2 SVG element objects."
+    assert len( PARSED_SVG_TEST_STRUCTURES["box_paths"].objcts ) == 5, "Should have 5 SVG element objects."
+    assert len( PARSED_SVG_TEST_STRUCTURES["box_paths_grouped"].objcts ) == 6, "Should have 6 SVG element objects."
+    assert len( PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped"].objcts ) == 9, "Should have 9 SVG element objects."
+    assert len( PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped_translated"].objcts ) == 9, "Should have 9 SVG element objects."
+    assert len( PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped_many-transforms"].objcts ) == 9, "Should have 9 SVG element objects."
+    assert len( PARSED_SVG_TEST_STRUCTURES["complex_shape"].objcts ) == 3, "Should have 3 SVG element objects."
 
 def test_Svg_find_space():
     assert False, "This test is unimplemented."
