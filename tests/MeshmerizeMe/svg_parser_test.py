@@ -85,10 +85,25 @@ def test_Svg_find_space():
 def test_Svg_find_objects():
     assert False, "This test is unimplemented."
 
-def test_Svg_get_paths():
-    assert False, "This test is unimplemented."
-
-
+def test_Svg_get_paths(PARSED_SVG_TEST_STRUCTURES):
+    paths = {}
+    for file_name in PARSED_SVG_TEST_STRUCTURES:
+        paths[file_name] = PARSED_SVG_TEST_STRUCTURES[file_name].get_paths()
+    
+    assert len( paths["box"] ) == 1, "Should have 1 path."
+    assert len( paths["box"][0]._segments ) == 4, "First path should have 4 segments."
+    assert len( paths["box_paths"] ) == 4, "Should have 4 paths."
+    assert len( paths["box_paths"][0]._segments ) == 1, "First path should have 1 segment."   
+    assert len( paths["box_paths_grouped"] ) == 4, "Should have 4 paths."
+    assert len( paths["box_paths_grouped"][0]._segments ) == 1, "First path should have 1 segment."
+    assert len( paths["box_paths_nested-grouped"] ) == 4, "Should have 4 paths."
+    assert len( paths["box_paths_nested-grouped"][0]._segments ) == 1, "First path should have 1 segment."
+    assert len( paths["box_paths_nested-grouped_translated"] ) == 4, "Should have 4 paths."
+    assert len( paths["box_paths_nested-grouped_translated"][0]._segments ) == 1, "First path should have 1 segment."
+    assert len( paths["box_paths_nested-grouped_many-transforms"] ) == 4, "Should have 4 paths."
+    assert len( paths["box_paths_nested-grouped_many-transforms"][0]._segments ) == 1, "First path should have 1 segment."
+    assert len( paths["complex_shape"] ) == 1, "Should have 1 path."
+    assert len( paths["complex_shape"][0]._segments ) == 4, "First path should have 4 segments."
 
 def test_SvgObject___init__():
     assert False, "This test is unimplemented."
