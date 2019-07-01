@@ -63,13 +63,36 @@ def test_Space_get_max_size():
 
 
 def test_Svg___init__(PARSED_SVG_TEST_STRUCTURES):   
-
+    for file_name in PARSED_SVG_TEST_STRUCTURES:
+        svg = PARSED_SVG_TEST_STRUCTURES[file_name]
+        assert svg.space is not None, "Should have a non-null 'space' property."
+        assert svg.rattrib is not None, "Should have a non-null 'rattrib' property."    
+        assert svg.objcts is not None and len(svg.objcts) > 1, "Should not have a null or empty 'objcts' property."
+    
+def test_Svg_find_space(PARSED_SVG_TEST_STRUCTURES):
     for file_name in PARSED_SVG_TEST_STRUCTURES:
         svg = PARSED_SVG_TEST_STRUCTURES[file_name]
         assert svg.space is not None, "Should have a non-null 'space' property."
         assert svg.space.x == 0 and svg.space.y == 0, "Space should have an origin at (0,0)."
         assert svg.space.width == 300 and svg.space.height == 300, "Space should have a width and height of 300."
-        assert svg.rattrib is not None, "Should have a non-null 'rattrib' property."    
+
+    svg = PARSED_SVG_TEST_STRUCTURES["box"]
+    
+    svg.rattrib = {"viewBox" : "100 100 200 300", "width" : "500", "height" : "700"}
+    space = svg.find_space()
+    assert space.x == 100 and space.y == 100 and space.width == 200 and space.height == 300, "Should use the space defined in the 'viewBox' attribute."
+
+    svg.rattrib = {"width" : 500}
+    space = svg.find_space()
+    assert space.x == 0 and space.y == 0 and space.width == 500 and space.height == 500, "Should have the same width and height when only the width is specified."
+
+    svg.rattrib = {"height" : 500}
+    space = svg.find_space()
+    assert space.x == 0 and space.y == 0 and space.width == 500 and space.height == 500, "Should have the same width and height when only the height is specified."
+
+def test_Svg_find_objects(PARSED_SVG_TEST_STRUCTURES):
+    for file_name in PARSED_SVG_TEST_STRUCTURES:
+        svg = PARSED_SVG_TEST_STRUCTURES[file_name]   
         assert svg.objcts is not None and len(svg.objcts) > 1, "Should not have a null or empty 'objcts' property."
         assert svg.objcts[0].parent is None, "Root element should have a null parent property."
         assert svg.objcts[1].parent == svg.objcts[0], "Root element should be the parent of the second element in the 'objcts' property."
@@ -81,12 +104,6 @@ def test_Svg___init__(PARSED_SVG_TEST_STRUCTURES):
     assert len( PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped_translated"].objcts ) == 9, "Should have 9 SVG element objects."
     assert len( PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped_many-transforms"].objcts ) == 9, "Should have 9 SVG element objects."
     assert len( PARSED_SVG_TEST_STRUCTURES["complex_shape"].objcts ) == 3, "Should have 3 SVG element objects."
-
-def test_Svg_find_space():
-    assert False, "This test is unimplemented."
-
-def test_Svg_find_objects():
-    assert False, "This test is unimplemented."
 
 def test_Svg_get_paths(PARSED_SVG_TEST_STRUCTURES):
     paths = {}
