@@ -3,7 +3,7 @@ import pytest
 import os
 import xml.etree.ElementTree as ET
 import numpy as np
-from ...MeshmerizeMe import svg_parser
+from ...MeshmerizeMe import svg_parser, geo_obj
 
 
 SVG_TEST_FILES_DIRECTORY = os.path.join( os.path.dirname(__file__), "svg_test_files" )
@@ -47,7 +47,10 @@ def test_make_vertices():
     assert False, "This test is unimplemented."
 
 def test_chk_vertex_dist():
-    assert False, "This test is unimplemented."
+    vertex1 = geo_obj.Vertex(-2,-1)
+    vertex2 = geo_obj.Vertex(1,3)
+    assert svg_parser.chk_vertex_dist(vertex1, vertex2) == 5, "Distance should be 5."
+    assert svg_parser.chk_vertex_dist(vertex1, vertex1) == 0, "Distance should be 0."
 
 
 

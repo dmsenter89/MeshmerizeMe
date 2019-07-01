@@ -20,6 +20,7 @@ import xml.etree.ElementTree as ET
 from tqdm import tqdm
 #from svg.path import parse_path
 from svgpathtools import parse_path
+import svgpathtools
 from numpy import linspace
 import numpy as np
 from .geo_obj import Vertex, writeFile
@@ -162,7 +163,7 @@ def make_vertices(path_list, params):
     """Takes the paths and turns them into a list of vertex points.
 
     Args:
-        path_list: python list containing path objects.
+        path_list: python list containing path SvgObjects.
         params: dictionary containing all parameters.
 
     Returns:
@@ -172,10 +173,12 @@ def make_vertices(path_list, params):
     vertex_vec = []
     print("Begin making vertices.")
     for path in tqdm(path_list):
+        path_as_svgpathtools_path = parse_path( path.get('d') )
+        path_as_svgpathtools_path = transform( path_as_svgpathtools_path, path.get_aggregate_transform_matrix() )
         cvert_vec = []
-        pts = points_on_path(path,params)
+        pts = points_on_path(path_as_svgpathtools_path,params)
         for p in pts:
-            z = path.point(p)
+            z = path_as_svgpathtools_path.point(p)
             zn = coord_transform(z,params)
             vpoint = Vertex(zn.real, zn.imag)
             cvert_vec.append(vpoint)
@@ -299,7 +302,7 @@ class Svg():
         paths = []
         for elem in self.objcts:
             if elem.type=='path':
-                paths.append(parse_path(elem.get('d')))
+                paths.append(elem)
         return paths
 
 
@@ -454,6 +457,37 @@ def parse_transform(transform_str):
         total_transform = total_transform.dot(_parse_transform_substr(substr))
 
     return total_transform
+
+# This function was taken (mostly) as is from the svgpathtools library.
+# Minor adjustments were made so that the function can access the
+# svgpathtools.path module.
+# https://github.com/mathandy/svgpathtools
+# commit: 40a515ee63c1f2832628a84279e198fedd858c7e
+def transform(curve, tf):
+    """Transforms the curve by the homogeneous transformation matrix tf"""
+    def to_point(p):
+        return np.array([[p.real], [p.imag], [1.0]])
+
+    def to_vector(z):
+        return np.array([[z.real], [z.imag], [0.0]])
+
+    def to_complex(v):
+        return v.item(0) + 1j * v.item(1)
+
+    if isinstance(curve, svgpathtools.path.Path):
+        return svgpathtools.path.Path(*[transform(segment, tf) for segment in curve])
+    elif svgpathtools.path.is_bezier_segment(curve):
+        return svgpathtools.path.bpoints2bezier([to_complex(tf.dot(to_point(p)))
+                               for p in curve.bpoints()])
+    elif isinstance(curve, svgpathtools.path.Arc):
+        new_start = to_complex(tf.dot(to_point(curve.start)))
+        new_end = to_complex(tf.dot(to_point(curve.end)))
+        new_radius = to_complex(tf.dot(to_vector(curve.radius)))
+        return svgpathtools.path.Arc(new_start, radius=new_radius, rotation=curve.rotation,
+                   large_arc=curve.large_arc, sweep=curve.sweep, end=new_end)
+    else:
+        raise TypeError("Input `curve` should be a Path, Line, "
+                        "QuadraticBezier, CubicBezier, or Arc object.")
 
 
 def test():
