@@ -52,14 +52,21 @@ def test_chk_vertex_dist():
 
 
 def test_Space___init__():
-    assert False, "This test is unimplemented."
+    space = svg_parser.Space("30 40 500 700")
+    assert space.x == 30, "X coordinate of origin should be 30."
+    assert space.y == 40, "Y coordinate of origin should be 40."
+    assert space.width == 500, "Width should be 500."
+    assert space.height == 700, "Height should be 700."
 
 def test_Space_get_origin():
-    assert False, "This test is unimplemented."
+    space = svg_parser.Space("30 40 500 700")
+    origin = space.get_origin()
+    assert origin[0] == 30 and origin[1] == 40, "Origin should be at (30,40)."
 
 def test_Space_get_max_size():
-    assert False, "This test is unimplemented."
-
+    space = svg_parser.Space("30 40 500 700")
+    max_size = space.get_max_size()
+    assert max_size[0] == 500 and max_size[1] == 700, "Max size of space should be 500 x 700."
 
 
 def test_Svg___init__(PARSED_SVG_TEST_STRUCTURES):   
