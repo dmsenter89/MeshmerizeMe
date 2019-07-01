@@ -2,6 +2,7 @@
 import pytest
 import os
 import xml.etree.ElementTree as ET
+import numpy as np
 from ...MeshmerizeMe import svg_parser
 
 
@@ -27,6 +28,8 @@ def PARSED_SVG_TEST_STRUCTURES(SVG_TEST_STRUCTURES):
     for file_name in SVG_TEST_STRUCTURES:
         parsed_svg_test_structures[file_name] = svg_parser.Svg( SVG_TEST_STRUCTURES[file_name]["absolute_file_path"] ) 
     return parsed_svg_test_structures
+
+
 
 def test_get_paths():
     assert False, "This test is unimplemented."
@@ -105,12 +108,42 @@ def test_Svg_get_paths(PARSED_SVG_TEST_STRUCTURES):
     assert len( paths["complex_shape"] ) == 1, "Should have 1 path."
     assert len( paths["complex_shape"][0]._segments ) == 4, "First path should have 4 segments."
 
-def test_SvgObject___init__():
-    assert False, "This test is unimplemented."
 
-def test_SvgObject_get():
-    assert False, "This test is unimplemented."
 
-def test_SvgObject_print_object():
-    assert False, "This test is unimplemented."
+def test_SvgObject___init__(SVG_TEST_STRUCTURES):
+
+    svg_element_tree_root_node = SVG_TEST_STRUCTURES["box"]["svg_element_tree"].getroot()
+    first_child_of_root_node = list(svg_element_tree_root_node)[0] 
+    svg_object1 = svg_parser.SvgObject( svg_element_tree_root_node )
+    svg_object2 = svg_parser.SvgObject( first_child_of_root_node )
+    assert svg_object1.type == "svg", "Should be a <svg> tag."
+    assert svg_object1.attr is not None, "Should have a non-null attr property."
+    assert svg_object1.attr["height"] == "300", "'height' attribute should be '300'."
+    assert svg_object2.type == "path", "Should be a <path> tag."
+    assert svg_object2.attr is not None, "Should have a non-null attr property."
+    assert svg_object2.attr["stroke"] == "black" and svg_object2.attr["stroke-width"] == "3", "'stroke' attribute should be 'black', 'stroke-width' attribute should be '3'."
+
+def test_SvgObject_get(SVG_TEST_STRUCTURES):
+    svg_element_tree_root_node = SVG_TEST_STRUCTURES["box"]["svg_element_tree"].getroot()
+    svg_object = svg_parser.SvgObject( svg_element_tree_root_node )
+    assert svg_object.get("height") == "300", "Should return '300' for the 'height' attribute."
+
+def test_SvgObject_get_aggregate_transform_matrix(PARSED_SVG_TEST_STRUCTURES):
+    svg_objects = PARSED_SVG_TEST_STRUCTURES["box"].objcts
+    path_svg_objects = [obj for obj in svg_objects if obj.type=="path"]
+    assert np.array_equal( path_svg_objects[0].get_aggregate_transform_matrix(), np.identity(3) ), "Should not have any transformations."
+
+    svg_objects = PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped_many-transforms"].objcts
+    path_svg_objects = [obj for obj in svg_objects if obj.type=="path"]
+    
+    expected_matrix_0 = np.array( [[ 6.123234e-16, -1.000000e+00,  2.500000e+02], [ 1.000000e+01,  6.123234e-17,  1.000000e+02], [ 0.000000e+00,  0.000000e+00,  1.000000e+00]] )
+    expected_matrix_1 = np.array( [[ 6.123234e-16, -1.000000e+00,  2.000000e+01], [ 1.000000e+01,  6.123234e-17,  1.000000e+02], [ 0.000000e+00,  0.000000e+00,  1.000000e+00]] )
+    expected_matrix_2 = np.array( [[ 23.,   0.,  20.], [  0.,   1., 200.], [  0.,   0.,   1.]] )
+    expected_matrix_3 = np.array( [[ 23.,   0.,  20.], [  0.,   1., 100.], [  0.,   0.,   1.]] )
+
+    assert np.allclose( path_svg_objects[0].get_aggregate_transform_matrix(), expected_matrix_0 ), "Should return a matrix representing all the transformations in the SVG file."
+    assert np.allclose( path_svg_objects[1].get_aggregate_transform_matrix(), expected_matrix_1 ), "Should return a matrix representing all the transformations in the SVG file."
+    assert np.allclose( path_svg_objects[2].get_aggregate_transform_matrix(), expected_matrix_2 ), "Should return a matrix representing all the transformations in the SVG file."
+    assert np.allclose( path_svg_objects[3].get_aggregate_transform_matrix(), expected_matrix_3 ), "Should return a matrix representing all the transformations in the SVG file."
+
 

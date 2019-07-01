@@ -341,7 +341,7 @@ class SvgObject():
         transform_matrix = np.identity(3)
         cur_SvgObject = self
         while cur_SvgObject is not None:
-            svg_transform_string = cur_SvgObject.get("transform")
+            svg_transform_string = cur_SvgObject.get("transform") if "transform" in cur_SvgObject.attr else ""
             cur_transform_matrix = parse_transform(svg_transform_string)
             transform_matrix = np.dot(cur_transform_matrix, transform_matrix)
             cur_SvgObject = cur_SvgObject.parent
