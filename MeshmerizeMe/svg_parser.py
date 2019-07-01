@@ -142,7 +142,7 @@ def points_on_path(path, params):
     rato = np.abs(path.derivative(p0,2))/np.abs(path.derivative(p0,1))
     while p1<1:
         p1 = p0 + ds / np.abs(path.derivative(p0)) 
-        if p1>1.01: # make sure we don't run outside of [0,1]
+        if p1>1.0: # make sure we don't run outside of [0,1]
             break
         ratn = np.abs(path.derivative(p1,2))/np.abs(path.derivative(p1))
         if ratn/rato > 3: # large change in ratio, be careful
@@ -152,6 +152,8 @@ def points_on_path(path, params):
             except:
                 # we don't have two steps available yet
                 p1 = p0 + (1/3)*(p1-p0) # play with differnt vals
+            if p1>1.0: # make sure we don't run outside of [0,1]
+                break
             ratn = np.abs(path.derivative(p1,2))/np.abs(path.derivative(p1))
         points.append(p1)
         p0 = p1

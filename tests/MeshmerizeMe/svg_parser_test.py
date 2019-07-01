@@ -2,6 +2,7 @@
 import pytest
 import os
 import xml.etree.ElementTree as ET
+import svgpathtools
 import numpy as np
 from ...MeshmerizeMe import svg_parser, geo_obj
 
@@ -43,7 +44,20 @@ def test_coord_transform():
 def test_points_on_path():
     assert False, "This test is unimplemented."
 
-def test_make_vertices():
+def test_make_vertices(PARSED_SVG_TEST_STRUCTURES):
+
+    # import matplotlib.pyplot as plt
+    # svg = PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped_many-transforms"]
+    # params = {"Ds":5e-3, "Lx":300, "Ly":300, "Space":svg_parser.Space("0 0 300 300")}
+    # paths = svg.get_paths()
+    # vertices = svg_parser.make_vertices(paths,params)
+
+    # x = [ vertex.x for vertex in vertices ]
+    # y = [ vertex.y for vertex in vertices ]
+
+    # plt.scatter(x,y)
+    # plt.show()
+
     assert False, "This test is unimplemented."
 
 def test_chk_vertex_dist():
@@ -118,7 +132,9 @@ def test_Svg_find_objects(PARSED_SVG_TEST_STRUCTURES):
 def test_Svg_get_paths(PARSED_SVG_TEST_STRUCTURES):
     paths = {}
     for file_name in PARSED_SVG_TEST_STRUCTURES:
-        paths[file_name] = PARSED_SVG_TEST_STRUCTURES[file_name].get_paths()
+        paths_as_SvgObject = PARSED_SVG_TEST_STRUCTURES[file_name].get_paths()
+        paths_as_svgpathtools_path = [ svgpathtools.parse_path(path.get("d")) for path in paths_as_SvgObject ]
+        paths[file_name] = paths_as_svgpathtools_path
     
     assert len( paths["box"] ) == 1, "Should have 1 path."
     assert len( paths["box"][0]._segments ) == 4, "First path should have 4 segments."
