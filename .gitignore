@@ -1,4 +1,5 @@
 .DS_Store
+.vscode
 
 # binary files
 __pycache__

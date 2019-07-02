@@ -36,18 +36,18 @@ def plot_file(fname, display=True):
     displayed.
     """
     fpath, v_name = os.path.split(fname)
-    print("\nProcessing {} for plotting.".format(v_name))
+    print(("\nProcessing {} for plotting.".format(v_name)))
     finput2d = os.path.join(fpath, 'input2d')
     params = fetch_input_params(finput2d)
-    print("Successfully loaded simulation parameters from {}.".format(
-                                finput2d))
+    print(("Successfully loaded simulation parameters from {}.".format(
+                                finput2d)))
     vec = geo_viewer.read_vertices(fname)
     outputpath = fpath+params['string_name']+'.png'
     geo_viewer.plot_points(vec, params, display, path=outputpath)
     if display:
-        print("Finished plotting {}.".format(v_name))
+        print(("Finished plotting {}.".format(v_name)))
     else:
-        print("Plotted {} to {}.".format(v_name, outputpath))
+        print(("Plotted {} to {}.".format(v_name, outputpath)))
 
 
 def mesh_file(fname):
@@ -55,19 +55,19 @@ def mesh_file(fname):
     Meshes file specified by fname.
     """
     fpath, svg_name = os.path.split(fname)
-    print("\nProcessing {} as SVG source file.".format(svg_name))
+    print(("\nProcessing {} as SVG source file.".format(svg_name)))
     #all_paths, params = svg_parser.get_paths(args.svgfile)
     all_paths, params = svg_parser.get_paths(fname)
-    print("Successfully extracted {} path(s) from the image.".format(
-                                                        len(all_paths)))
+    print(("Successfully extracted {} path(s) from the image.".format(
+                                                        len(all_paths))))
     finput2d = os.path.join(fpath, 'input2d')
     params = fetch_input_params(finput2d, params)
-    print("Successfully loaded simulation parameters from {}.".format(
-                                finput2d))
+    print(("Successfully loaded simulation parameters from {}.".format(
+                                finput2d)))
     vertices = svg_parser.make_vertices(all_paths, params)
     outFile = os.path.join(fpath,params['string_name'])
     writeFile(outFile, vertices)
-    print("Vertices have been written to {}.vertex.".format(outFile))
+    print(("Vertices have been written to {}.vertex.".format(outFile)))
 
 
 def main(args):

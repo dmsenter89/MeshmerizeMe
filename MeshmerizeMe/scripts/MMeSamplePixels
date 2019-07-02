@@ -20,7 +20,7 @@ Args:
 
 """
 
-from __future__ import absolute_import
+
 import six.moves.tkinter_tkfiledialog as tkFileDialog
 import six.moves.tkinter_messagebox
 from six.moves.tkinter import *

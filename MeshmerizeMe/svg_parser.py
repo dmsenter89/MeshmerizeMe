@@ -84,7 +84,7 @@ def get_sim_parameters(fname, params):
                 split_line = line.split()
                 sname = split_line[2]
                 sname = sname.strip('"')
-                print("sname={}".format(sname))
+                print(("sname={}".format(sname)))
                 params['SimName'] = sname
     params['Ds'] = 0.5*params['Lx']/params['Nx']
     return params
@@ -354,7 +354,7 @@ class SvgObject():
 
     def print_object(self):
         """Print node name and attribute dictionary to console."""
-        print("{} | {}".format(self.type, self.attr))
+        print(("{} | {}".format(self.type, self.attr)))
 
 
 # This function was taken as is from the svgpathtools library.
@@ -380,7 +380,7 @@ def _parse_transform_substr(transform_substr):
 
     type_str, value_str = transform_substr.split('(')
     value_str = value_str.replace(',', ' ')
-    values = list(map(float, filter(None, value_str.split(' '))))
+    values = list(map(float, [_f for _f in value_str.split(' ') if _f]))
 
     transform = np.identity(3)
     if 'matrix' in type_str:

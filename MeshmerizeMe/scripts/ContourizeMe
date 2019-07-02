@@ -15,8 +15,8 @@ from MeshmerizeMe import get_diameters, Chanvese, Contours
 try: # for Py3
     from tkinter import *
 except: # legacy Py2 support
-    from Tkinter import *
-    import tkFileDialog
+    from tkinter import *
+    import tkinter.filedialog
 import pickle
 import cv2
 import numpy as np
@@ -966,7 +966,7 @@ class ContourizeMe(object):
             try:
                 filename = filedialog.asksaveasfilename()
             except:
-                filename = tkFileDialog.asksaveasfilename()
+                filename = tkinter.filedialog.asksaveasfilename()
 
             if filename != '':
                 self.plot_beziers(plot = False)
@@ -1002,7 +1002,7 @@ class ContourizeMe(object):
                         paths.append(CubicBezier(x1 + 1j * y1, x1 + 1j * y1, cx2 + 1j * cy2, x2 + 1j * y2))
 
 
-                print('Writing SVG file to "{}"'.format(filename + '.svg'))
+                print(('Writing SVG file to "{}"'.format(filename + '.svg')))
 
                 wsvg(paths, filename = filename + '.svg')
 

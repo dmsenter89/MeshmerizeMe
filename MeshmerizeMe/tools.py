@@ -5,7 +5,7 @@
 # ======================================================
 # Some supporting functions
 
-from __future__ import print_function
+
 from scipy.spatial import KDTree
 import numpy as np
 import cv2
@@ -257,7 +257,7 @@ def get_diameters(contours, beziers, mask, acc_bound = 100, radian_err = 7.5 * (
     if acc_bound is not None:
         ix = np.where(accs < np.percentile(accs, acc_bound))
     else:
-        ix = range(len(dd))
+        ix = list(range(len(dd)))
             
     dd = np.array(dd)[ix]
     _ = np.array(_)[ix]
@@ -382,13 +382,13 @@ class Chanvese(object):
                 # Intermediate output
                 if display:
                     if np.mod(its, 5) == 0:
-                        print('iteration: {0}'.format(its))
+                        print(('iteration: {0}'.format(its)))
                         fig, axes = plt.subplots(ncols=2, figsize = (16, 8))
                         show_curve_and_phi(fig, I, phi, color)
                         ix += 1
                 else:
                     if np.mod(its, 10) == 0:
-                        print('iteration: {0}'.format(its))
+                        print(('iteration: {0}'.format(its)))
 
                 # Find interior and exterior mean
                 upts = np.flatnonzero(phi <= 0)  # interior points
