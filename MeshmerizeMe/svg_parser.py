@@ -31,7 +31,7 @@ import warnings
 def get_paths(fname, params={}):
     """ Extract all paths and size from an svg file.
 
-    This function scans over an svg to extract all paths as svg.path path objects
+    This function scans over an svg to extract all paths as SvgObjects
     and extracts width and height of the svg file.
 
     Args:
@@ -39,7 +39,7 @@ def get_paths(fname, params={}):
         params: python dictionary to hold the information about the svg.
 
     Returns:
-        paths: a list of path objects (svg.path module).
+        paths: a list of SvgObjects (svg_parser module).
         params: dictionary updated with the extracted information.
     """
     mySvg = Svg(fname)
