@@ -41,24 +41,76 @@ def test_get_sim_parameters():
 def test_coord_transform():
     assert False, "This test is unimplemented."
 
-def test_points_on_path():
-    assert False, "This test is unimplemented."
+def test_points_on_path(PARSED_SVG_TEST_STRUCTURES):
+
+    svg = PARSED_SVG_TEST_STRUCTURES["complex_shape"]
+    params = {"Ds":5e-4, "Lx":300, "Ly":300, "Space":svg_parser.Space("0 0 300 300")}
+    
+    paths_as_SvgObject = svg.get_paths()
+    for path_as_SvgObject in paths_as_SvgObject:
+        path = svgpathtools.parse_path( path_as_SvgObject.get("d") )
+        
+        # The following calculations are not yet supported by Arc path segments.
+        if isinstance( path._segments[0], svgpathtools.Arc ):
+            continue
+        
+        path_params_T = svg_parser.points_on_path(path,params) # These parameters define our point estimates.
+        previous_point = None
+        num_correct_derivative_estimates = 0
+        
+        for path_param_T in path_params_T:
+            point = path.point(path_param_T)
+            distance_to_path, segment_param_t, segment_index = svgpathtools.closest_point_in_path(point, path)
+            assert distance_to_path < 1e-6, "Point should be close to the actual path."
+
+            path_param_T_of_closest_point = path.t2T( path._segments[segment_index], segment_param_t ) # Convert path segment parameter t to path parameter T.
+            derivative = path.derivative(path_param_T_of_closest_point)
+            derivative = derivative.imag / derivative.real
+
+            if previous_point is not None:
+                derivative_estimate = (point.imag - previous_point.imag) / (point.real - previous_point.real)
+                if abs(derivative - derivative_estimate) < 0.05:
+                    num_correct_derivative_estimates += 1
+            previous_point = point
+
+        percent_correct_derivative_estimates = num_correct_derivative_estimates / len(path_params_T)
+        assert percent_correct_derivative_estimates > 0.9, "Slope of the lines connecting our points should match the derivative of the path at least 90%% of the time."
 
 def test_make_vertices(PARSED_SVG_TEST_STRUCTURES):
 
-    # import matplotlib.pyplot as plt
-    # svg = PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped_many-transforms"]
-    # params = {"Ds":5e-3, "Lx":300, "Ly":300, "Space":svg_parser.Space("0 0 300 300")}
-    # paths = svg.get_paths()
-    # vertices = svg_parser.make_vertices(paths,params)
+    svg_boxes = [
+        PARSED_SVG_TEST_STRUCTURES["box"],
+        PARSED_SVG_TEST_STRUCTURES["box_paths"],
+        PARSED_SVG_TEST_STRUCTURES["box_paths_grouped"],
+        PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped"],
+        PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped_translated"],
+        PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped_many-transforms"]
+    ]
 
-    # x = [ vertex.x for vertex in vertices ]
-    # y = [ vertex.y for vertex in vertices ]
+    params = {"Ds":5e-3, "Lx":300, "Ly":300, "Space":svg_parser.Space("0 0 300 300")}
 
-    # plt.scatter(x,y)
-    # plt.show()
-
-    assert False, "This test is unimplemented."
+    def isVertexOnBoxOutline(vertex):
+        x = vertex.x
+        y = vertex.y
+        
+        tolerance = 1e-6
+        minX = 20 - tolerance
+        maxX = 250 + tolerance
+        minY = 100 - tolerance
+        maxY = 200 + tolerance
+        
+        isVertexOnTopSideOfBox    = minX <= x <= maxX and np.isclose(y,100)
+        isVertexOnBottomSideOfBox = minX <= x <= maxX and np.isclose(y,200)
+        isVertexOnRightSideOfBox = np.isclose(x,250) and minY <= y <= maxY
+        isVertexOnLeftSideOfBox  = np.isclose(x, 20) and minY <= y <= maxY
+        
+        return isVertexOnTopSideOfBox or isVertexOnBottomSideOfBox or isVertexOnRightSideOfBox or isVertexOnLeftSideOfBox
+    
+    for svg_box in svg_boxes:
+        paths = svg_box.get_paths()
+        vertices = svg_parser.make_vertices(paths,params)
+        for vertex in vertices:
+            assert isVertexOnBoxOutline(vertex), "Vertex should be on box outline."
 
 def test_chk_vertex_dist():
     vertex1 = geo_obj.Vertex(-2,-1)
@@ -127,7 +179,7 @@ def test_Svg_find_objects(PARSED_SVG_TEST_STRUCTURES):
     assert len( PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped"].objcts ) == 9, "Should have 9 SVG element objects."
     assert len( PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped_translated"].objcts ) == 9, "Should have 9 SVG element objects."
     assert len( PARSED_SVG_TEST_STRUCTURES["box_paths_nested-grouped_many-transforms"].objcts ) == 9, "Should have 9 SVG element objects."
-    assert len( PARSED_SVG_TEST_STRUCTURES["complex_shape"].objcts ) == 3, "Should have 3 SVG element objects."
+    assert len( PARSED_SVG_TEST_STRUCTURES["complex_shape"].objcts ) == 4, "Should have 4 SVG element objects."
 
 def test_Svg_get_paths(PARSED_SVG_TEST_STRUCTURES):
     paths = {}
@@ -148,8 +200,8 @@ def test_Svg_get_paths(PARSED_SVG_TEST_STRUCTURES):
     assert len( paths["box_paths_nested-grouped_translated"][0]._segments ) == 1, "First path should have 1 segment."
     assert len( paths["box_paths_nested-grouped_many-transforms"] ) == 4, "Should have 4 paths."
     assert len( paths["box_paths_nested-grouped_many-transforms"][0]._segments ) == 1, "First path should have 1 segment."
-    assert len( paths["complex_shape"] ) == 1, "Should have 1 path."
-    assert len( paths["complex_shape"][0]._segments ) == 4, "First path should have 4 segments."
+    assert len( paths["complex_shape"] ) == 2, "Should have 2 paths."
+    assert len( paths["complex_shape"][0]._segments ) == 3, "First path should have 3 segments."
 
 
 
