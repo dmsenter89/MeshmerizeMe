@@ -35,7 +35,7 @@ def fetch_input_params(fname, params={}):
 def print_params(dic):
     """ Print the parameters that were read.
     """
-    for k,v in list(dic.items()):
+    for k, v in list(dic.items()):
         print((k, '-->', v, ' ({})'.format(type(v))))
 
 def test():

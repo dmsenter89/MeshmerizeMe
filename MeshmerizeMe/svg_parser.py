@@ -111,7 +111,7 @@ def coord_transform(z, params):
     Ly = params['Ly']
     xnew = (z.real-x)*Lx/(w-x)
     ynew = (h-z.imag)*Ly/(h-y)
-    return complex(xnew,ynew)
+    return complex(xnew, ynew)
 
 
 def points_on_path(path, params):
@@ -139,12 +139,12 @@ def points_on_path(path, params):
     p1 = 0
     ds = params['Ds']
     # keep track   of the ratio of 2nd to 1st deriv
-    rato = np.abs(path.derivative(p0,2))/np.abs(path.derivative(p0,1))
+    rato = np.abs(path.derivative(p0, 2))/np.abs(path.derivative(p0, 1))
     while p1<1:
         p1 = p0 + ds / np.abs(path.derivative(p0)) 
         if p1>1.0: # make sure we don't run outside of [0,1]
             break
-        ratn = np.abs(path.derivative(p1,2))/np.abs(path.derivative(p1))
+        ratn = np.abs(path.derivative(p1, 2))/np.abs(path.derivative(p1))
         if ratn/rato > 3: # large change in ratio, be careful
             try:
                 # use previous two points as step instead
@@ -154,7 +154,7 @@ def points_on_path(path, params):
                 p1 = p0 + (1/3)*(p1-p0) # play with differnt vals
             if p1>1.0: # make sure we don't run outside of [0,1]
                 break
-            ratn = np.abs(path.derivative(p1,2))/np.abs(path.derivative(p1))
+            ratn = np.abs(path.derivative(p1, 2))/np.abs(path.derivative(p1))
         points.append(p1)
         p0 = p1
     point_array = np.asarray(points)
@@ -178,17 +178,17 @@ def make_vertices(path_list, params):
         path_as_svgpathtools_path = parse_path( path.get('d') )
         path_as_svgpathtools_path = transform( path_as_svgpathtools_path, path.get_aggregate_transform_matrix() )
         cvert_vec = []
-        pts = points_on_path(path_as_svgpathtools_path,params)
+        pts = points_on_path(path_as_svgpathtools_path, params)
         for p in pts:
             z = path_as_svgpathtools_path.point(p)
-            zn = coord_transform(z,params)
+            zn = coord_transform(z, params)
             vpoint = Vertex(zn.real, zn.imag)
             cvert_vec.append(vpoint)
         vertex_vec.extend(cvert_vec)
     return vertex_vec
 
 
-def chk_vertex_dist(a,b):
+def chk_vertex_dist(a, b):
     """Helper function to check Euclidean distance between a and b.
 
     Args:
@@ -249,7 +249,7 @@ class Svg():
         Class function that finds the space on which the elements in the
         SVG file are defined.
         """
-        x,y,width,height = (0,0,-1,-1)  # default initialize, to be overwritten
+        x, y, width, height = (0, 0, -1, -1)  # default initialize, to be overwritten
         if 'viewBox' in self.rattrib:
             # easiest way to handles
             boxstr = self.rattrib['viewBox']
@@ -268,7 +268,7 @@ class Svg():
                 width = height
 
             # now create boxstr for Space class
-            boxstr = "{} {} {} {}".format(x,y,width,height)
+            boxstr = "{} {} {} {}".format(x, y, width, height)
 
         mySpace = Space(boxstr)
         return mySpace
@@ -322,7 +322,7 @@ class SvgObject():
         """
         if '}' in node.tag:
             # this handles namespaces
-            self.type = node.tag.split('}',1)[1]
+            self.type = node.tag.split('}', 1)[1]
         else:
             self.type = node.tag    # str holds name of object
         self.attr = node.attrib  # dic with attributes of element

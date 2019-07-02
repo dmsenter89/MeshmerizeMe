@@ -16,7 +16,7 @@ def SVG_TEST_STRUCTURES():
     for file_name in os.listdir(SVG_TEST_FILES_DIRECTORY):
         if ".svg" in file_name.lower():
             absolute_file_path = os.path.join(SVG_TEST_FILES_DIRECTORY, file_name )
-            file_name = file_name.lower().replace(".svg","")
+            file_name = file_name.lower().replace(".svg", "")
             svg_element_tree = ET.parse(absolute_file_path)
             svg_test_structures[file_name] = {
                 "absolute_file_path" : absolute_file_path,
@@ -86,21 +86,21 @@ def test_get_sim_parameters(INPUT2D_TEST_FILE_PATHS):
              sim_parameters["Ds"] == 0.0078125 ), "Parameters dictionary should contain the values specified in the input2d file."
 
 def test_coord_transform():
-    coord = complex(50,50)
+    coord = complex(50, 50)
     params = {"Lx":300, "Ly":300, "Space":svg_parser.Space("0 0 300 300")}
-    assert svg_parser.coord_transform(coord,params) == complex(50,250), "Should transform the coordinate into the specified input2d space."
+    assert svg_parser.coord_transform(coord, params) == complex(50, 250), "Should transform the coordinate into the specified input2d space."
 
-    coord = complex(-50,-50)
+    coord = complex(-50, -50)
     params = {"Lx":100, "Ly":100, "Space":svg_parser.Space("0 0 300 300")}
-    assert svg_parser.coord_transform(coord,params) == complex(-16.666666666666668,116.66666666666667), "Should transform the coordinate into the specified input2d space."
+    assert svg_parser.coord_transform(coord, params) == complex(-16.666666666666668, 116.66666666666667), "Should transform the coordinate into the specified input2d space."
 
-    coord = complex(0,0)
+    coord = complex(0, 0)
     params = {"Lx":300, "Ly":300, "Space":svg_parser.Space("0 0 300 300")}
-    assert svg_parser.coord_transform(coord,params) == complex(0,300), "Should transform the coordinate into the specified input2d space."
+    assert svg_parser.coord_transform(coord, params) == complex(0, 300), "Should transform the coordinate into the specified input2d space."
 
-    coord = complex(50,-50)
+    coord = complex(50, -50)
     params = {"Lx":300, "Ly":300, "Space":svg_parser.Space("0 0 100 100")}
-    assert svg_parser.coord_transform(coord,params) == complex(150,450), "Should transform the coordinate into the specified input2d space."
+    assert svg_parser.coord_transform(coord, params) == complex(150, 450), "Should transform the coordinate into the specified input2d space."
 
 def test_points_on_path(PARSED_SVG_TEST_STRUCTURES):
 
@@ -115,7 +115,7 @@ def test_points_on_path(PARSED_SVG_TEST_STRUCTURES):
         if isinstance( path._segments[0], svgpathtools.Arc ):
             continue
         
-        path_params_T = svg_parser.points_on_path(path,params) # These parameters define our point estimates.
+        path_params_T = svg_parser.points_on_path(path, params) # These parameters define our point estimates.
         previous_point = None
         num_correct_derivative_estimates = 0
         
@@ -160,22 +160,22 @@ def test_make_vertices(PARSED_SVG_TEST_STRUCTURES):
         minY = 100 - tolerance
         maxY = 200 + tolerance
         
-        isVertexOnTopSideOfBox    = minX <= x <= maxX and np.isclose(y,100)
-        isVertexOnBottomSideOfBox = minX <= x <= maxX and np.isclose(y,200)
-        isVertexOnRightSideOfBox = np.isclose(x,250) and minY <= y <= maxY
+        isVertexOnTopSideOfBox    = minX <= x <= maxX and np.isclose(y, 100)
+        isVertexOnBottomSideOfBox = minX <= x <= maxX and np.isclose(y, 200)
+        isVertexOnRightSideOfBox = np.isclose(x, 250) and minY <= y <= maxY
         isVertexOnLeftSideOfBox  = np.isclose(x, 20) and minY <= y <= maxY
         
         return isVertexOnTopSideOfBox or isVertexOnBottomSideOfBox or isVertexOnRightSideOfBox or isVertexOnLeftSideOfBox
     
     for svg_box in svg_boxes:
         paths = svg_box.get_paths()
-        vertices = svg_parser.make_vertices(paths,params)
+        vertices = svg_parser.make_vertices(paths, params)
         for vertex in vertices:
             assert isVertexOnBoxOutline(vertex), "Vertex should be on box outline."
 
 def test_chk_vertex_dist():
-    vertex1 = geo_obj.Vertex(-2,-1)
-    vertex2 = geo_obj.Vertex(1,3)
+    vertex1 = geo_obj.Vertex(-2, -1)
+    vertex2 = geo_obj.Vertex(1, 3)
     assert svg_parser.chk_vertex_dist(vertex1, vertex2) == 5, "Distance should be 5."
     assert svg_parser.chk_vertex_dist(vertex1, vertex1) == 0, "Distance should be 0."
 

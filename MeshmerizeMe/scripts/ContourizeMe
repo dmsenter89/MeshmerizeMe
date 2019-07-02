@@ -407,7 +407,7 @@ class transformWindow(object):
         return ret, [self.transformVar.get(), options]
 
     def clear(self):
-        self.filelist.delete(0,END)
+        self.filelist.delete(0, END)
 
         self.gui_object.transformer.options = []
         self.gui_object.callback()
@@ -422,7 +422,7 @@ class transformWindow(object):
 
     def delete(self):
         if self.filelist.get(ANCHOR) != '':
-            del self.gui_object.transformer.options[self.filelist.get(0,END).index(self.filelist.get(ANCHOR))]
+            del self.gui_object.transformer.options[self.filelist.get(0, END).index(self.filelist.get(ANCHOR))]
             self.filelist.delete(ANCHOR)
         elif self.filelist.get(END) != '':
             del self.gui_object.transformer.options[-1]
@@ -538,10 +538,10 @@ class Transformer(object):
         return cv2.bilateralFilter(im, d, sigmaColor, sigmaSpace)
 
     def adaptive_gaussian_threshold(self, im, blockSize = 11):
-        return cv2.adaptiveThreshold(im,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,blockSize,2)
+        return cv2.adaptiveThreshold(im, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, blockSize, 2)
 
     def otsu_threshold(self, im):
-        ret, thresh = cv2.threshold(im,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        ret, thresh = cv2.threshold(im, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         return thresh
 
     def morph_transform(self, im, ksize, transform = 'Erosion'):
@@ -642,9 +642,9 @@ class ContourizeMe(object):
 
             if len(np.where(im > 255)[0]) > 0:
                 self.im = map_uint16_to_uint8(self.im)
-            self.imgray = cv2.cvtColor(self.im,cv2.COLOR_BGR2GRAY)
+            self.imgray = cv2.cvtColor(self.im, cv2.COLOR_BGR2GRAY)
         elif len(self.im.shape) == 3:
-            self.imgray = cv2.cvtColor(self.im,cv2.COLOR_BGR2GRAY)
+            self.imgray = cv2.cvtColor(self.im, cv2.COLOR_BGR2GRAY)
         else:
             self.imgray = copy.copy(self.im)
             self.im = cv2.cvtColor(self.imgray, cv2.COLOR_GRAY2BGR)
@@ -657,8 +657,8 @@ class ContourizeMe(object):
         # to display
         self.mim = cv2.cvtColor(copy.copy(self.im), cv2.COLOR_BGR2RGB)
 
-        ret,thresh = cv2.threshold(self.imgray,127,255,0)
-        _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+        ret, thresh = cv2.threshold(self.imgray, 127, 255, 0)
+        _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         # OpenCV 2 patch
         if len(_) == 3:
@@ -668,7 +668,7 @@ class ContourizeMe(object):
 
         self.contours = sorted(contours, key = len, reverse = True)
         for j in range(1):
-            cv2.drawContours(self.mim, contours, j, color=(0,0,0), thickness=-1)
+            cv2.drawContours(self.mim, contours, j, color=(0, 0, 0), thickness=-1)
 
         # Create the window
         self.root = Tk()
@@ -784,7 +784,7 @@ class ContourizeMe(object):
             if not self.smoothing:
                 self.contours, self.thresh = self.get_contours(tothresh)
 
-            cv2.drawContours(_, self.contours, -1, color=(0,255,0), thickness=self.drawWidth)
+            cv2.drawContours(_, self.contours, -1, color=(0, 255, 0), thickness=self.drawWidth)
 
             img = Image.fromarray(_)
             img_t = Image.fromarray(tothresh)
@@ -840,7 +840,7 @@ class ContourizeMe(object):
         # Bound according to the chosen paramaterization
         if self.manualThresh:
             if self.pamVar.get() == 'Grayscale':
-                thresh = cv2.inRange(tothresh,r1,r2)
+                thresh = cv2.inRange(tothresh, r1, r2)
 
             elif self.pamVar.get() == 'RGB':
                 thresh = cv2.inRange(tothresh, (b1, g1, r1), (b2, g2, r2))
@@ -850,7 +850,7 @@ class ContourizeMe(object):
             thresh = tothresh
 
         # contour finding with OpenCV 2 or 3
-        _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+        _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         if len(_) == 3:
             _, contours, hierarchy = _
@@ -901,11 +901,11 @@ class ContourizeMe(object):
         for out in self.outs:
             c =  out.reshape(len(out), 1, 2).astype(np.float32)
 
-            perimeter = cv2.arcLength(c,True)
+            perimeter = cv2.arcLength(c, True)
 
             #print perimeter
 
-            als = np.array([0.] + [cv2.arcLength(c[:i],True) for i in range(1,len(c))])
+            als = np.array([0.] + [cv2.arcLength(c[:i], True) for i in range(1, len(c))])
 
             t = np.linspace(0., perimeter, int(np.round(perimeter / self.pp)) * 2 + 1)
             t = [np.argmin(np.abs(als - u)) for u in t]
@@ -925,7 +925,7 @@ class ContourizeMe(object):
                 t = np.linspace(0., 1., 6)
                 xy = np.array([cubic_smooth_bezier(b, u) for u in t])
 
-                plt.plot(xy[:,0], xy[:,1], c = 'b')
+                plt.plot(xy[:, 0], xy[:, 1], c = 'b')
 
             plt.show()
             plt.close()
