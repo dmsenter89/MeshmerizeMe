@@ -10,4 +10,4 @@ build/
 develop-eggs/
 dist/
 eggs/
-
+*.egg-info/
