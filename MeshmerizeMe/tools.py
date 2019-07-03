@@ -11,6 +11,7 @@ import numpy as np
 import cv2
 import scipy.ndimage as nd
 import matplotlib.pyplot as plt
+from . import meshmerizeme_logger as logger
 
 eps = np.finfo(float).eps
 
@@ -382,13 +383,13 @@ class Chanvese(object):
                 # Intermediate output
                 if display:
                     if np.mod(its, 5) == 0:
-                        print(('iteration: {0}'.format(its)))
+                        logger.info(('iteration: {0}'.format(its)))
                         fig, axes = plt.subplots(ncols=2, figsize = (16, 8))
                         show_curve_and_phi(fig, I, phi, color)
                         ix += 1
                 else:
                     if np.mod(its, 10) == 0:
-                        print(('iteration: {0}'.format(its)))
+                        logger.info(('iteration: {0}'.format(its)))
 
                 # Find interior and exterior mean
                 upts = np.flatnonzero(phi <= 0)  # interior points

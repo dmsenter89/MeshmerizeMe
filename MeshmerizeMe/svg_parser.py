@@ -24,6 +24,7 @@ import svgpathtools
 from numpy import linspace
 import numpy as np
 from .geo_obj import Vertex, writeFile
+from . import meshmerizeme_logger as logger
 import re
 import warnings
 
@@ -84,7 +85,7 @@ def get_sim_parameters(fname, params):
                 split_line = line.split()
                 sname = split_line[2]
                 sname = sname.strip('"')
-                print(("sname={}".format(sname)))
+                logger.info(("sname={}".format(sname)))
                 params['SimName'] = sname
     params['Ds'] = 0.5*params['Lx']/params['Nx']
     return params
@@ -173,7 +174,7 @@ def make_vertices(path_list, params):
         svg file.
     """
     vertex_vec = []
-    print("Begin making vertices.")
+    logger.info("Begin making vertices.")
     for path in tqdm(path_list):
         path_as_svgpathtools_path = parse_path( path.get('d') )
         path_as_svgpathtools_path = transform( path_as_svgpathtools_path, path.get_aggregate_transform_matrix() )

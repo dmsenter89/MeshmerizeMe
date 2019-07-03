@@ -11,6 +11,8 @@ paramaterization of pixel space (Grayscale, RGB, HSV).
 """
 
 from MeshmerizeMe import get_diameters, Chanvese, Contours
+import MeshmerizeMe.meshmerizeme_logger as logger
+
 
 try: # for Py3
     from tkinter import *
@@ -648,7 +650,7 @@ class ContourizeMe(object):
         else:
             self.imgray = copy.copy(self.im)
             self.im = cv2.cvtColor(self.imgray, cv2.COLOR_GRAY2BGR)
-            print('Working with grayscale image')
+            logger.info('Working with grayscale image')
 
         self.info = dict()
         self.info['Image location'] = os.path.abspath(im_path)
@@ -878,7 +880,7 @@ class ContourizeMe(object):
 
     def plot_beziers(self, plot = True, ofile = None):
         plt.clf()
-        print('Creating bezier curves...')
+        logger.info('Creating bezier curves...')
 
         self.outs = []
         self.beziers = []
@@ -919,7 +921,7 @@ class ContourizeMe(object):
 
 
         if plot:
-            print('Plotting...')
+            logger.info'Plotting...')
 
             for b in beziers:
                 t = np.linspace(0., 1., 6)
@@ -974,7 +976,7 @@ class ContourizeMe(object):
                 mask = np.zeros(self.imgray.shape)
                 cv2.drawContours(mask, self.contours, -1, color = 1., thickness = -1)
 
-                print('Computing normal vectors and diameter...')
+                logger.info('Computing normal vectors and diameter...')
                 if self.write_diameters:
                     dataf, xys, diameters, nvs, si = get_diameters(self.outs, self.beziers, mask, acc_bound = self.percentile)
 
@@ -1002,7 +1004,7 @@ class ContourizeMe(object):
                         paths.append(CubicBezier(x1 + 1j * y1, x1 + 1j * y1, cx2 + 1j * cy2, x2 + 1j * y2))
 
 
-                print(('Writing SVG file to "{}"'.format(filename + '.svg')))
+                logger.info(('Writing SVG file to "{}"'.format(filename + '.svg')))
 
                 wsvg(paths, filename = filename + '.svg')
 
@@ -1020,7 +1022,7 @@ class ContourizeMe(object):
                 dataf.to_csv(filename + '-diameters.csv', index = False)
 
                 plt.savefig(filename + '-diameters.png', dpi = 100)
-                print('Done!')
+                logger.info('Done!')
 
     def update_info(self):
         r1, r2, b1, b2, g1, g2 = self.get_bounds()
