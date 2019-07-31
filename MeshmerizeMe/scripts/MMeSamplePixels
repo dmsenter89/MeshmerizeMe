@@ -20,7 +20,7 @@ Args:
 
 """
 
-from __future__ import absolute_import
+
 import six.moves.tkinter_tkfiledialog as tkFileDialog
 import six.moves.tkinter_messagebox
 from six.moves.tkinter import *
@@ -83,7 +83,7 @@ ZOOM_OUT_FACTOR = 1/ZOOM_IN_FACTOR
 
 MARKER_COLOR = (255, 105, 180, 200)
 
-colors = [(228,26,28),(55,126,184),(77,175,74),(152,78,163),(255,127,0),(255,255,51),(166,86,40),(247,129,191)]
+colors = [(228, 26, 28), (55, 126, 184), (77, 175, 74), (152, 78, 163), (255, 127, 0), (255, 255, 51), (166, 86, 40), (247, 129, 191)]
 
 colors = [(u[0], u[1], u[2], 180) for u in colors]
 
@@ -163,9 +163,9 @@ class SampleWindow(pyglet.window.Window):
     # format for Pyglet. Changes BGR to RGB, flips, rotates, then resizes 
     def format(self, image, size = None, bgs = None):
         # flip
-        cv2.flip(image,1,image)
+        cv2.flip(image, 1, image)
         # BGR to RGB
-        image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
         # rotate 180
         image = np.rot90(image)
@@ -186,7 +186,7 @@ class SampleWindow(pyglet.window.Window):
         radius = 2
 
         if self.current - 1 in nz:
-            self.current_marker = Circle(tuple(positions[self.current - 1]), 4, MARKER_COLOR , self.track_batch)
+            self.current_marker = Circle(tuple(positions[self.current - 1]), 4, MARKER_COLOR, self.track_batch)
 
         for k in nz:
             self.drawnPoints[track][k] = Circle(tuple(positions[k]), radius, colors[trackList.index(track) % len(colors)], self.track_batch)
@@ -210,7 +210,7 @@ class SampleWindow(pyglet.window.Window):
             self.current_marker = None
 
         if self.current - 1 in nz:
-            self.current_marker = Circle(tuple(positions[self.current - 1]), 4, MARKER_COLOR , self.track_batch)
+            self.current_marker = Circle(tuple(positions[self.current - 1]), 4, MARKER_COLOR, self.track_batch)
 
         for k in nz:
             self.drawnPoints[currentTrack][k] = Circle(tuple(positions[k]), radius, colors[trackList.index(currentTrack) % 4], self.track_batch)
@@ -227,7 +227,7 @@ class SampleWindow(pyglet.window.Window):
             self.current_marker = None
 
         if self.current - 1 in nz:
-            self.current_marker = Circle(tuple(positions[self.current - 1]), 4, MARKER_COLOR , self.track_batch)
+            self.current_marker = Circle(tuple(positions[self.current - 1]), 4, MARKER_COLOR, self.track_batch)
 
     # delete a point
     def deletePoint(self):
@@ -249,7 +249,7 @@ class SampleWindow(pyglet.window.Window):
             except:
                 #_ = np.zeros((self.end,2))
                 #_[_ == 0] = np.nan
-                self.points[track] = csc_matrix((self.end,2))
+                self.points[track] = csc_matrix((self.end, 2))
 
             try:
                 self.drawnPoints[track]

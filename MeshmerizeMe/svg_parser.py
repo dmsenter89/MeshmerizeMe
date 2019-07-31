@@ -9,7 +9,7 @@ IBAMR.
 
 ISSUES:
     The SVG file needs to be in a very specific format for this to work.
-    1) the file needs to have it's height and width given in pixels, as simple
+    1) the file needs to have its height and width given in pixels, as simple
         float numbers, not in millimeters or anything, OR specify a viewBox.
     2) The svg *cannot* be using the translate feature or any other feature
         that alters its coordinate system relative to the viewbox.
@@ -20,15 +20,19 @@ import xml.etree.ElementTree as ET
 from tqdm import tqdm
 #from svg.path import parse_path
 from svgpathtools import parse_path
+import svgpathtools
 from numpy import linspace
-from MeshmerizeMe.geo_obj import Vertex, writeFile
+import numpy as np
+from .geo_obj import Vertex, writeFile
+from . import meshmerizeme_logger as logger
 import re
+import warnings
 
 
 def get_paths(fname, params={}):
     """ Extract all paths and size from an svg file.
 
-    This function scans over an svg to extract all paths as svg.path path objects
+    This function scans over an svg to extract all paths as SvgObjects
     and extracts width and height of the svg file.
 
     Args:
@@ -36,7 +40,7 @@ def get_paths(fname, params={}):
         params: python dictionary to hold the information about the svg.
 
     Returns:
-        paths: a list of path objects (svg.path module).
+        paths: a list of SvgObjects (svg_parser module).
         params: dictionary updated with the extracted information.
     """
     mySvg = Svg(fname)
@@ -81,7 +85,7 @@ def get_sim_parameters(fname, params):
                 split_line = line.split()
                 sname = split_line[2]
                 sname = sname.strip('"')
-                print("sname={}".format(sname))
+                logger.info(("sname={}".format(sname)))
                 params['SimName'] = sname
     params['Ds'] = 0.5*params['Lx']/params['Nx']
     return params
@@ -108,14 +112,11 @@ def coord_transform(z, params):
     Ly = params['Ly']
     xnew = (z.real-x)*Lx/(w-x)
     ynew = (h-z.imag)*Ly/(h-y)
-    return complex(xnew,ynew)
+    return complex(xnew, ynew)
 
 
-def points_on_path(path, params, method=1):
+def points_on_path(path, params):
     """Figure out how many points are necessary and return those.
-
-    Two methods are currently implemented; legacy method retained at the moment
-    while debugging.
 
     Args:
         path: a path object.
@@ -125,24 +126,39 @@ def points_on_path(path, params, method=1):
         numpy array with the necessary number of evenly distributed points
         to dissect path objects at the necessary density.
     """
-    if method==1:
-        length = path.length()  # lenght of path in svg system
-        z = complex(length, params['height'])
-        new_len = abs(coord_transform(z, params))
-        num_of_pts = new_len//params['Ds']
-        num_of_pts += 1
-        point_array = linspace(0,1, num_of_pts)
-    else:
-        # setup two temporary dummy points
-        points = []
-        p0 = 0
-        p1 = 0
-        ds = params['Ds']
-        while p1<1:
-            p1 = p0 + ds / abs(path.derivative(p0))
-            p0 = p1
-            points.append(p0)
-        point_array = np.asarray(points)
+    #if method==1:
+    #    length = path.length()  # lenght of path in svg system
+    #    z = complex(length, params['height'])
+    #    new_len = abs(coord_transform(z, params))
+    #    num_of_pts = new_len//params['Ds']
+    #    num_of_pts += 1
+    #    point_array = linspace(0,1, num_of_pts)
+    #else:
+    # setup two temporary dummy points
+    points = [0]
+    p0 = 0
+    p1 = 0
+    ds = params['Ds']
+    # keep track   of the ratio of 2nd to 1st deriv
+    rato = np.abs(path.derivative(p0, 2))/np.abs(path.derivative(p0, 1))
+    while p1<1:
+        p1 = p0 + ds / np.abs(path.derivative(p0)) 
+        if p1>1.0: # make sure we don't run outside of [0,1]
+            break
+        ratn = np.abs(path.derivative(p1, 2))/np.abs(path.derivative(p1))
+        if ratn/rato > 3: # large change in ratio, be careful
+            try:
+                # use previous two points as step instead
+                p1 = p0 + (points[-1]-points[-2])
+            except:
+                # we don't have two steps available yet
+                p1 = p0 + (1/3)*(p1-p0) # play with differnt vals
+            if p1>1.0: # make sure we don't run outside of [0,1]
+                break
+            ratn = np.abs(path.derivative(p1, 2))/np.abs(path.derivative(p1))
+        points.append(p1)
+        p0 = p1
+    point_array = np.asarray(points)
     return point_array
 
 
@@ -150,7 +166,7 @@ def make_vertices(path_list, params):
     """Takes the paths and turns them into a list of vertex points.
 
     Args:
-        path_list: python list containing path objects.
+        path_list: python list containing path SvgObjects.
         params: dictionary containing all parameters.
 
     Returns:
@@ -158,20 +174,22 @@ def make_vertices(path_list, params):
         svg file.
     """
     vertex_vec = []
-    print("Begin making vertices.")
+    logger.info("Begin making vertices.")
     for path in tqdm(path_list):
+        path_as_svgpathtools_path = parse_path( path.get('d') )
+        path_as_svgpathtools_path = transform( path_as_svgpathtools_path, path.get_aggregate_transform_matrix() )
         cvert_vec = []
-        pts = points_on_path(path,params)
+        pts = points_on_path(path_as_svgpathtools_path, params)
         for p in pts:
-            z = path.point(p)
-            zn = coord_transform(z,params)
+            z = path_as_svgpathtools_path.point(p)
+            zn = coord_transform(z, params)
             vpoint = Vertex(zn.real, zn.imag)
             cvert_vec.append(vpoint)
         vertex_vec.extend(cvert_vec)
     return vertex_vec
 
 
-def chk_vertex_dist(a,b):
+def chk_vertex_dist(a, b):
     """Helper function to check Euclidean distance between a and b.
 
     Args:
@@ -232,7 +250,7 @@ class Svg():
         Class function that finds the space on which the elements in the
         SVG file are defined.
         """
-        x,y,width,height = (0,0,-1,-1)  # default initialize, to be overwritten
+        x, y, width, height = (0, 0, -1, -1)  # default initialize, to be overwritten
         if 'viewBox' in self.rattrib:
             # easiest way to handles
             boxstr = self.rattrib['viewBox']
@@ -251,8 +269,8 @@ class Svg():
                 width = height
 
             # now create boxstr for Space class
-            boxstr = "{} {} {} {}".format(x,y,width,height)
-        
+            boxstr = "{} {} {} {}".format(x, y, width, height)
+
         mySpace = Space(boxstr)
         return mySpace
 
@@ -261,14 +279,33 @@ class Svg():
         Quick function that generates a list of all path and other geometric
         objects in the SVG.
         """
-        objs = [SvgObject(child) for child in rnode]
-        return objs
+        objects = []
+        element_tree_stack = []
+
+        def push_element_and_its_parent_to_stack(element, parent):
+            element_tree_stack.append( { "element" : element, "parent" : parent } )
+
+        push_element_and_its_parent_to_stack(rnode, None)
+
+        while len(element_tree_stack) > 0:
+            curElementAndParent = element_tree_stack.pop()
+            curElement = curElementAndParent["element"]
+            parentOfCurElement = curElementAndParent["parent"]
+            
+            curElementAsSvgObject = SvgObject(curElement)
+            curElementAsSvgObject.parent = parentOfCurElement            
+            objects.append(curElementAsSvgObject)
+
+            for child_element in list(curElement):
+                push_element_and_its_parent_to_stack(child_element, curElementAsSvgObject)
+
+        return objects
 
     def get_paths(self):
         paths = []
         for elem in self.objcts:
             if elem.type=='path':
-                paths.append(parse_path(elem.get('d')))
+                paths.append(elem)
         return paths
 
 
@@ -286,10 +323,11 @@ class SvgObject():
         """
         if '}' in node.tag:
             # this handles namespaces
-            self.type = node.tag.split('}',1)[1]
+            self.type = node.tag.split('}', 1)[1]
         else:
             self.type = node.tag    # str holds name of object
         self.attr = node.attrib  # dic with attributes of element
+        self.parent = None
 
     def get(self, attribute):
         """ Getter returns an attribute from the attribute dictionary as string.
@@ -302,9 +340,157 @@ class SvgObject():
         """
         return self.attr[attribute]
 
+    def get_aggregate_transform_matrix(self):
+        """
+        Returns a matrix representing the aggregation of all transformations applied to this SvgObject.
+        """
+        transform_matrix = np.identity(3)
+        cur_SvgObject = self
+        while cur_SvgObject is not None:
+            svg_transform_string = cur_SvgObject.get("transform") if "transform" in cur_SvgObject.attr else ""
+            cur_transform_matrix = parse_transform(svg_transform_string)
+            transform_matrix = np.dot(cur_transform_matrix, transform_matrix)
+            cur_SvgObject = cur_SvgObject.parent
+        return transform_matrix
+
     def print_object(self):
         """Print node name and attribute dictionary to console."""
-        print("{} | {}".format(self.type, self.attr))
+        print(("{} | {}".format(self.type, self.attr)))
+
+
+# This function was taken as is from the svgpathtools library.
+# https://github.com/mathandy/svgpathtools
+# commit: 40a515ee63c1f2832628a84279e198fedd858c7e
+def _check_num_parsed_values(values, allowed):
+    if not any(num == len(values) for num in allowed):
+        if len(allowed) > 1:
+            warnings.warn('Expected one of the following number of values {0}, but found {1} values instead: {2}'
+                          .format(allowed, len(values), values))
+        elif allowed[0] != 1:
+            warnings.warn('Expected {0} values, found {1}: {2}'.format(allowed[0], len(values), values))
+        else:
+            warnings.warn('Expected 1 value, found {0}: {1}'.format(len(values), values))
+        return False
+    return True
+
+
+# This function was taken as is from the svgpathtools library.
+# https://github.com/mathandy/svgpathtools
+# commit: 40a515ee63c1f2832628a84279e198fedd858c7e
+def _parse_transform_substr(transform_substr):
+
+    type_str, value_str = transform_substr.split('(')
+    value_str = value_str.replace(',', ' ')
+    values = list(map(float, [_f for _f in value_str.split(' ') if _f]))
+
+    transform = np.identity(3)
+    if 'matrix' in type_str:
+        if not _check_num_parsed_values(values, [6]):
+            return transform
+
+        transform[0:2, 0:3] = np.array([values[0:6:2], values[1:6:2]])
+
+    elif 'translate' in transform_substr:
+        if not _check_num_parsed_values(values, [1, 2]):
+            return transform
+
+        transform[0, 2] = values[0]
+        if len(values) > 1:
+            transform[1, 2] = values[1]
+
+    elif 'scale' in transform_substr:
+        if not _check_num_parsed_values(values, [1, 2]):
+            return transform
+
+        x_scale = values[0]
+        y_scale = values[1] if (len(values) > 1) else x_scale
+        transform[0, 0] = x_scale
+        transform[1, 1] = y_scale
+
+    elif 'rotate' in transform_substr:
+        if not _check_num_parsed_values(values, [1, 3]):
+            return transform
+
+        angle = values[0] * np.pi / 180.0
+        if len(values) == 3:
+            offset = values[1:3]
+        else:
+            offset = (0, 0)
+        tf_offset = np.identity(3)
+        tf_offset[0:2, 2:3] = np.array([[offset[0]], [offset[1]]])
+        tf_rotate = np.identity(3)
+        tf_rotate[0:2, 0:2] = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+        tf_offset_neg = np.identity(3)
+        tf_offset_neg[0:2, 2:3] = np.array([[-offset[0]], [-offset[1]]])
+
+        transform = tf_offset.dot(tf_rotate).dot(tf_offset_neg)
+
+    elif 'skewX' in transform_substr:
+        if not _check_num_parsed_values(values, [1]):
+            return transform
+
+        transform[0, 1] = np.tan(values[0] * np.pi / 180.0)
+
+    elif 'skewY' in transform_substr:
+        if not _check_num_parsed_values(values, [1]):
+            return transform
+
+        transform[1, 0] = np.tan(values[0] * np.pi / 180.0)
+    else:
+        # Return an identity matrix if the type of transform is unknown, and warn the user
+        warnings.warn('Unknown SVG transform type: {0}'.format(type_str))
+
+    return transform
+
+
+# This function was taken as is from the svgpathtools library.
+# https://github.com/mathandy/svgpathtools
+# commit: 40a515ee63c1f2832628a84279e198fedd858c7e
+def parse_transform(transform_str):
+    """Converts a valid SVG transformation string into a 3x3 matrix.
+    If the string is empty or null, this returns a 3x3 identity matrix"""
+    if not transform_str:
+        return np.identity(3)
+    elif not isinstance(transform_str, str):
+        raise TypeError('Must provide a string to parse')
+
+    total_transform = np.identity(3)
+    transform_substrs = transform_str.split(')')[:-1]  # Skip the last element, because it should be empty
+    for substr in transform_substrs:
+        total_transform = total_transform.dot(_parse_transform_substr(substr))
+
+    return total_transform
+
+# This function was taken (mostly) as is from the svgpathtools library.
+# Minor adjustments were made so that the function can access the
+# svgpathtools.path module.
+# https://github.com/mathandy/svgpathtools
+# commit: 40a515ee63c1f2832628a84279e198fedd858c7e
+def transform(curve, tf):
+    """Transforms the curve by the homogeneous transformation matrix tf"""
+    def to_point(p):
+        return np.array([[p.real], [p.imag], [1.0]])
+
+    def to_vector(z):
+        return np.array([[z.real], [z.imag], [0.0]])
+
+    def to_complex(v):
+        return v.item(0) + 1j * v.item(1)
+
+    if isinstance(curve, svgpathtools.path.Path):
+        return svgpathtools.path.Path(*[transform(segment, tf) for segment in curve])
+    elif svgpathtools.path.is_bezier_segment(curve):
+        return svgpathtools.path.bpoints2bezier([to_complex(tf.dot(to_point(p)))
+                               for p in curve.bpoints()])
+    elif isinstance(curve, svgpathtools.path.Arc):
+        new_start = to_complex(tf.dot(to_point(curve.start)))
+        new_end = to_complex(tf.dot(to_point(curve.end)))
+        new_radius = to_complex(tf.dot(to_vector(curve.radius)))
+        return svgpathtools.path.Arc(new_start, radius=new_radius, rotation=curve.rotation,
+                   large_arc=curve.large_arc, sweep=curve.sweep, end=new_end)
+    else:
+        raise TypeError("Input `curve` should be a Path, Line, "
+                        "QuadraticBezier, CubicBezier, or Arc object.")
 
 
 def test():

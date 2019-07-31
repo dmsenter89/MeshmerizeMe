@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from . import meshmerizeme_logger as logger
+
 def fetch_input_params(fname, params={}):
     """ Read in function parameters from input2d file at fname.
 
@@ -35,8 +37,8 @@ def fetch_input_params(fname, params={}):
 def print_params(dic):
     """ Print the parameters that were read.
     """
-    for k,v in dic.items():
-        print (k, '-->', v, ' ({})'.format(type(v)))
+    for k, v in list(dic.items()):
+        logger.info((k, '-->', v, ' ({})'.format(type(v))))
 
 def test():
     # test function requires input2d to be in same folder.

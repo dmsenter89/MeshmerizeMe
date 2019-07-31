@@ -5,12 +5,13 @@
 # ======================================================
 # Some supporting functions
 
-from __future__ import print_function
+
 from scipy.spatial import KDTree
 import numpy as np
 import cv2
 import scipy.ndimage as nd
 import matplotlib.pyplot as plt
+from . import meshmerizeme_logger as logger
 
 eps = np.finfo(float).eps
 
@@ -127,7 +128,7 @@ class Contours(object):
 
         return xys, diameters
 
-    def visualize(self, image = None, color = (0,255,0), thickness = 2):
+    def visualize(self, image = None, color = (0, 255, 0), thickness = 2):
         if image is None:
             if self.im is None:
                 im = self.im = cv2.imread(self.info['Image location'])
@@ -159,14 +160,14 @@ for the purpose of getting the inner / outer direction of a contour
          average pixel values 5 pixels out in the directions specified
 """ 
 def brightness(dd, out, imgray):
-    out[np.where((out[:,0].astype(np.int32) > imgray.shape[1] - 1) | (out[:,1].astype(np.int32) > imgray.shape[0] - 1))] = np.zeros(2)
+    out[np.where((out[:, 0].astype(np.int32) > imgray.shape[1] - 1) | (out[:, 1].astype(np.int32) > imgray.shape[0] - 1))] = np.zeros(2)
     
     vals = np.array([imgray[int(np.floor(uv[1])) - 1, int(np.floor(uv[0])) - 1] for uv in out], dtype = np.float32)
 
-    maxx = np.max(out[:,0])
-    maxy = np.max(out[:,1])
-    minx = np.min(out[:,0])
-    miny = np.min(out[:,1])
+    maxx = np.max(out[:, 0])
+    maxy = np.max(out[:, 1])
+    minx = np.min(out[:, 0])
+    miny = np.min(out[:, 1])
     
     counts = np.zeros(vals.shape)
 
@@ -174,19 +175,19 @@ def brightness(dd, out, imgray):
         to_move = dd*dp
         nout = to_move + out
 
-        i = np.where((nout[:,0].astype(np.int32) > imgray.shape[1] - 1) | (nout[:,1].astype(np.int32) > imgray.shape[0] - 1))
+        i = np.where((nout[:, 0].astype(np.int32) > imgray.shape[1] - 1) | (nout[:, 1].astype(np.int32) > imgray.shape[0] - 1))
         nout[i] = np.array([np.nan, np.nan])
         _ = np.zeros(vals.shape)
         _[list(set(range(len(vals))).difference(i[0]))] = np.array([imgray[int(uv[1]), int(uv[0])] for uv in nout if not np.isnan(uv[0])])
 
         #print _
-        counts[np.where((nout[:,0].astype(np.int32) < imgray.shape[1] - 1) | (nout[:,1].astype(np.int32) < imgray.shape[0] - 1))] += 1.
+        counts[np.where((nout[:, 0].astype(np.int32) < imgray.shape[1] - 1) | (nout[:, 1].astype(np.int32) < imgray.shape[0] - 1))] += 1.
         
         vals += _.astype(np.float32)
 
     i = np.where(counts != 0.)
     vals[i] = vals[i] / counts
-    vals[np.where((out[:,0] < minx + 10) | (out[:,1] > maxx - 5))] = np.nan
+    vals[np.where((out[:, 0] < minx + 10) | (out[:, 1] > maxx - 5))] = np.nan
     
     return vals
 
@@ -257,7 +258,7 @@ def get_diameters(contours, beziers, mask, acc_bound = 100, radian_err = 7.5 * (
     if acc_bound is not None:
         ix = np.where(accs < np.percentile(accs, acc_bound))
     else:
-        ix = range(len(dd))
+        ix = list(range(len(dd)))
             
     dd = np.array(dd)[ix]
     _ = np.array(_)[ix]
@@ -268,8 +269,8 @@ def get_diameters(contours, beziers, mask, acc_bound = 100, radian_err = 7.5 * (
     dd = dd / np.hstack((np.reshape(norm, (len(norm), 1)), np.reshape(norm, (len(norm), 1))))
     ndd = -dd
 
-    sobelx = cv2.Sobel(imgray,cv2.CV_64F,1,0,ksize=ksize)
-    sobely = cv2.Sobel(imgray,cv2.CV_64F,0,1,ksize=ksize)
+    sobelx = cv2.Sobel(imgray, cv2.CV_64F, 1, 0, ksize=ksize)
+    sobely = cv2.Sobel(imgray, cv2.CV_64F, 0, 1, ksize=ksize)
 
     # compute the brightness inside and outside 
     vals1 = brightness_v2(dd, np.array(_), sobelx, sobely)
@@ -284,7 +285,7 @@ def get_diameters(contours, beziers, mask, acc_bound = 100, radian_err = 7.5 * (
 
     #print indices
             
-    maxs = np.nanargmin(vals[:,indices], axis = 0)
+    maxs = np.nanargmin(vals[:, indices], axis = 0)
 
     # for each normal vector and it's opposite, choose the direction which points inward
     for i in range(len(indices)):
@@ -382,13 +383,13 @@ class Chanvese(object):
                 # Intermediate output
                 if display:
                     if np.mod(its, 5) == 0:
-                        print('iteration: {0}'.format(its))
+                        logger.info(('iteration: {0}'.format(its)))
                         fig, axes = plt.subplots(ncols=2, figsize = (16, 8))
                         show_curve_and_phi(fig, I, phi, color)
                         ix += 1
                 else:
                     if np.mod(its, 10) == 0:
-                        print('iteration: {0}'.format(its))
+                        logger.info(('iteration: {0}'.format(its)))
 
                 # Find interior and exterior mean
                 upts = np.flatnonzero(phi <= 0)  # interior points

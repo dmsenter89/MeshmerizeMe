@@ -1,0 +1,15 @@
+<svg height="300" width="300">
+    <g transform="translate(-50,-50)">
+        <path stroke="black" stroke-width="3" 
+            d="M 250 100 
+               A 200 100 0 0 0 250 200"
+            fill="none" />
+        <path stroke="black" stroke-width="3" 
+            d="M 100 100
+               L 250 100 
+               M 250 200
+               Q 175 150 100 200
+               C 175 100 0 150 100 100"
+            fill="none" />
+    </g>
+</svg>
