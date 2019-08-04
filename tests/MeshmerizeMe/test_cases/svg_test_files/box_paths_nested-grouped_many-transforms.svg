@@ -1,0 +1,14 @@
+<svg height="300" width="300">
+    <g id="group1" transform="translate(20,100)">        
+        <path id="top-side" transform="scale(23,1)" stroke="black" stroke-width="3" d="M0 0 L10 0" fill="none" />
+        <g id="group2">
+            <path id="bottom-side" transform="scale(23,1) translate(0,100)" stroke="black" stroke-width="3" d="M0 0 L10 0" fill="none" />
+        </g>
+        <g id="group3" transform="rotate(90) matrix(10 0 0 1 0 0)">
+            <path id="left-side" stroke="black" stroke-width="3" d="M0 0 L10  0" fill="none" />
+            <g id="group4">
+                <path id="right-side" transform="translate(0,-230)" stroke="black" stroke-width="3" d="M0 0 L10  0" fill="none" />
+            </g>
+        </g>
+    </g>
+</svg>

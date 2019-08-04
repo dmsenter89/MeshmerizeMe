@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
     for ix in nz:
         
-        x, y = map(int, list(fg[ix].toarray()[0]))
+        x, y = list(map(int, list(fg[ix].toarray()[0])))
         
         y = image.shape[0] - y
 
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     nz = list(set(bg.nonzero()[0]))
 
     for ix in nz:
-        x, y = map(int, list(bg[ix].toarray()[0]))
+        x, y = list(map(int, list(bg[ix].toarray()[0])))
         y = image.shape[0] - y
 
         x = image[y - window_size:y + window_size + 1, x - window_size:x + window_size + 1].flatten().astype(np.float32)
@@ -112,8 +112,8 @@ if __name__ == '__main__':
 
     # the initial grid
     # Use the log-2 grid given as an example in the guide
-    gamma = np.power(2., range(-15, 4))
-    C = np.power(2., range(-5, 16))
+    gamma = np.power(2., list(range(-15, 4)))
+    C = np.power(2., list(range(-5, 16)))
     
     # for an RBF (radial basis function) kernel function
     parameters = {'kernel':['rbf'], 'C': C, 'gamma': gamma, 'class_weight': ['balanced']}

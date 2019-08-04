@@ -15,7 +15,7 @@ class Vertex():
     """
     defines the x,y Lagrangian nodes
     """
-    def __init__(self,x,y):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
 
@@ -35,7 +35,7 @@ class Spring():
     """
     defines a spring element.
     """
-    def __init__(self,mastId,slaveId, stiff, restlen, beta):
+    def __init__(self, mastId, slaveId, stiff, restlen, beta):
         self.master = mastId    # master node ID
         self.slave = slaveId    # slave node ID
         self.stiff = stiff      # spring stiffness
@@ -126,13 +126,13 @@ def writeFile(filename, geo_list):
 #===============================================================================
 def test():
     print("Beginning test.")
-    v1 = Vertex(3,4)
-    v2 = Vertex(5,6)
+    v1 = Vertex(3, 4)
+    v2 = Vertex(5, 6)
     vlist = [v1, v2]
     writeFile('test', vlist)
 
-    s1 = Spring(3,4, 1e-4, 1.1, 4)
-    s2 = Spring(5,6, 1e-4, 1.1, 4)
+    s1 = Spring(3, 4, 1e-4, 1.1, 4)
+    s2 = Spring(5, 6, 1e-4, 1.1, 4)
     slist = [s1, s2]
     writeFile('test', slist)
     print("Test completed.")

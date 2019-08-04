@@ -8,13 +8,15 @@ import MeshmerizeMe.svg_parser as svg_parser
 from MeshmerizeMe.input_parser import fetch_input_params
 import MeshmerizeMe.geo_viewer as geo_viewer
 from MeshmerizeMe.geo_obj import writeFile
+import MeshmerizeMe.meshmerizeme_logger as logger
+
 
 def batch(args):
     """
     Handles batch processing. Will iterate over stdin to process files.
     Takes into account whether the user wants to mesh or plot the files.
     """
-    print("MeshmerizeMe started in batch mode Will read from stdin.")
+    logger.info("MeshmerizeMe started in batch mode Will read from stdin.")
     for line in sys.stdin:
         path = line.strip()
         if path=='':
@@ -24,8 +26,8 @@ def batch(args):
         elif args.plot:
             plot_file(path, display=False)
         else:
-            print("You shouldn't see this line.")
-    print("\nThank you for using MeshmerizeMe.")
+            logger.warning("You shouldn't see this line.")
+    logger.info("Thank you for using MeshmerizeMe.")
 
 
 def plot_file(fname, display=True):
@@ -36,18 +38,18 @@ def plot_file(fname, display=True):
     displayed.
     """
     fpath, v_name = os.path.split(fname)
-    print("\nProcessing {} for plotting.".format(v_name))
+    logger.info(("Processing {} for plotting.".format(v_name)))
     finput2d = os.path.join(fpath, 'input2d')
     params = fetch_input_params(finput2d)
-    print("Successfully loaded simulation parameters from {}.".format(
-                                finput2d))
+    logger.info(("Successfully loaded simulation parameters from {}.".format(
+                                finput2d)))
     vec = geo_viewer.read_vertices(fname)
     outputpath = fpath+params['string_name']+'.png'
     geo_viewer.plot_points(vec, params, display, path=outputpath)
     if display:
-        print("Finished plotting {}.".format(v_name))
+        logger.info(("Finished plotting {}.".format(v_name)))
     else:
-        print("Plotted {} to {}.".format(v_name, outputpath))
+        logger.info(("Plotted {} to {}.".format(v_name, outputpath)))
 
 
 def mesh_file(fname):
@@ -55,19 +57,19 @@ def mesh_file(fname):
     Meshes file specified by fname.
     """
     fpath, svg_name = os.path.split(fname)
-    print("\nProcessing {} as SVG source file.".format(svg_name))
+    logger.info(("Processing {} as SVG source file.".format(svg_name)))
     #all_paths, params = svg_parser.get_paths(args.svgfile)
     all_paths, params = svg_parser.get_paths(fname)
-    print("Successfully extracted {} path(s) from the image.".format(
-                                                        len(all_paths)))
+    logger.info(("Successfully extracted {} path(s) from the image.".format(
+                                                        len(all_paths))))
     finput2d = os.path.join(fpath, 'input2d')
     params = fetch_input_params(finput2d, params)
-    print("Successfully loaded simulation parameters from {}.".format(
-                                finput2d))
+    logger.info(("Successfully loaded simulation parameters from {}.".format(
+                                finput2d)))
     vertices = svg_parser.make_vertices(all_paths, params)
-    outFile = os.path.join(fpath,params['string_name'])
+    outFile = os.path.join(fpath, params['string_name'])
     writeFile(outFile, vertices)
-    print("Vertices have been written to {}.vertex.".format(outFile))
+    logger.info(("Vertices have been written to {}.vertex.".format(outFile)))
 
 
 def main(args):
@@ -76,20 +78,20 @@ def main(args):
     and calls the appropriate functions on them, whether to mesh or plot
     the given experiment.
     """
-    print("MeshmerizeMe was started in CLI mode.")
+    logger.info("MeshmerizeMe was started in CLI mode.")
 
     if args.input_file:
-        print("MeshmerizeMe was started in mesh-mode.")
+        logger.info("MeshmerizeMe was started in mesh-mode.")
         for f in args.fname:
             mesh_file(f.name)
-        print("\nMeshmerizeMe finished meshing your files."
+        logger.info("MeshmerizeMe finished meshing your files. "
               "Please check your files for integrity.")
     elif args.plot:
-        print("MeshmerizeMe was started in plot mode.")
+        logger.info("MeshmerizeMe was started in plot mode.")
         for f in args.fname:
             plot_file(f.name)
 
-    print("\nThank you for using MeshmerizeMe.")
+    logger.info("Thank you for using MeshmerizeMe.")
 
 
 if __name__ == '__main__':

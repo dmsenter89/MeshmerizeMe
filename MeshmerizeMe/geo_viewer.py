@@ -4,7 +4,8 @@
 import os
 import argparse
 import matplotlib.pyplot as plt
-from MeshmerizeMe.input_parser import fetch_input_params
+from .input_parser import fetch_input_params
+from . import meshmerizeme_logger as logger
 
 def read_vertices(fname):
     """
@@ -45,12 +46,12 @@ def plot_points(vec, params, display=True, path=None):
 
 def main(infilepath):
     path, infile = os.path.split(infilepath)
-    print('Got the file and path, getting started.')
+    logger.info('Got the file and path, getting started.')
     params = fetch_input_params(infilepath)
     svgfile = os.path.join(path, params['string_name'] + '.vertex')
     vec = read_vertices(svgfile)
     plot_points(vec, params)
-    print('File Plotted. Thank you.')
+    logger.info('File Plotted. Thank you.')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'Script to visualize a '
