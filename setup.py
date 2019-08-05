@@ -13,7 +13,6 @@ setup(
         "numpy >= 1.9.1",
         "pandas >= 0.15.2",
         "matplotlib >= 1.3.1",
-        "future >= 0.16.0",
         "svgpathtools",
         "svgwrite",
         "scipy",
