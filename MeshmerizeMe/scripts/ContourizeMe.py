@@ -34,7 +34,7 @@ import pandas as pd
 from scipy.interpolate import UnivariateSpline
 from MeshmerizeMe import get_diameters, Chanvese, Contours
 
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.backend_bases import MouseEvent
 from matplotlib.figure import Figure
 
@@ -918,7 +918,7 @@ class ContourizeMe(object):
 
 
         if plot:
-            logger.info'Plotting...')
+            logger.info('Plotting...')
 
             for b in beziers:
                 t = np.linspace(0., 1., 6)

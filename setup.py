@@ -38,6 +38,8 @@ setup(
         "scikit-image",
         "scikit-learn",
         "opencv-python >= 4.1.0.25",
+        "Pmw >= 2.0.1",
+        "progressbar >= 2.5",
         ],
 
     author='Michael Senter, Dylan Ray, and Steven Thomas',
