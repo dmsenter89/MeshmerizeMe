@@ -624,7 +624,6 @@ class ContourizeMe(object):
         """
         # Load the image
         self.im = cv2.imread(im_path)
-
         self.transformer = Transformer(self)
         self.manualThresh = True
         self.hidden = True
@@ -637,9 +636,9 @@ class ContourizeMe(object):
 
         if self.im is None:
             # read with the alternate method
-            self.im = imread(os.path.abspath(args.image))
+            self.im = imread(os.path.abspath(im_path))
 
-            if len(np.where(im > 255)[0]) > 0:
+            if len(np.where(self.im > 255)[0]) > 0:
                 self.im = map_uint16_to_uint8(self.im)
             self.imgray = cv2.cvtColor(self.im, cv2.COLOR_BGR2GRAY)
         elif len(self.im.shape) == 3:
