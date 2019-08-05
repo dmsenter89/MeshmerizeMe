@@ -7,8 +7,16 @@ This version will only handle 2D code. See the project wiki for more
 information.
 
 ## Input and Output
-An SVG file with no grouping (<g> elements) and an input2d file for the
-simulation. Outputs a .vertex file that can be plotted.
+- Input
+    - An input2d file for the simulation.
+    - An SVG file ___without___:
+        - Nested viewBoxes/viewPorts
+        - Nested `<svg>` elements
+        - Use of the "preserveAspectRatio" attribute
+        - Use of units other than pixels
+        - `<use>`, `<symbol>`, and `<def>` tags
+- Output
+    - A .vertex file that can be plotted.
 
 ## Usage:
 To convert image files into the intermediate SVG format, call the 
@@ -45,4 +53,4 @@ process them.
 See the wiki for installation instructions.
 
 ## Requirements and Dependencies:
-Python 3.x. Matlab. NumPy. [tqdm](https://pypi.python.org/pypi/tqdm). [svg.path](https://pypi.python.org/pypi/svg.path).
+Python 3.x. Matlab. NumPy. [tqdm](https://pypi.python.org/pypi/tqdm). [svg.path](https://pypi.python.org/pypi/svg.path). [OpenCV](https://pypi.org/project/opencv-python/).
