@@ -1,6 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
 import sys, os
 import argparse
 #import MeshmerizeMe.uidesign as ui
@@ -72,7 +69,7 @@ def mesh_file(fname):
     logger.info(("Vertices have been written to {}.vertex.".format(outFile)))
 
 
-def main(args):
+def process_all_files(args):
     """
     The main function for this program iterates over the given filenames
     and calls the appropriate functions on them, whether to mesh or plot
@@ -94,7 +91,13 @@ def main(args):
     logger.info("Thank you for using MeshmerizeMe.")
 
 
-if __name__ == '__main__':
+# This main function is an "entry point" for the program as defined in
+# setup.py . The function must not take any arguments, so we must
+# read any command line arguments from sys.argv instead.
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
+
     parser = argparse.ArgumentParser(description = "Welcome to MeshmerizeMe. "
                 "MeshmerizeMe is a Python script intended to assist with "
                 "creating geometries for fluid simulations using IBAMR and "
@@ -125,4 +128,4 @@ if __name__ == '__main__':
         batch(args)
     else:
         # process the given files one by one
-        main(args)
+        process_all_files(args)

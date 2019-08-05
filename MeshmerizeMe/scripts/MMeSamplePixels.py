@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
 MMeSamplePixels
 ---------------
@@ -402,7 +399,13 @@ class SampleWindow(pyglet.window.Window):
     
 
 
-if __name__ == '__main__':
+# This main function is an "entry point" for the program as defined in
+# setup.py . The function must not take any arguments, so we must
+# read any command line arguments from sys.argv instead.
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
+
     # Argument Parser    
     parser = argparse.ArgumentParser()
     parser.add_argument("image", default = "None")

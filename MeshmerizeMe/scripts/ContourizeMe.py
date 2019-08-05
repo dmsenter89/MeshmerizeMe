@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
 ContourizeMe
 
@@ -1056,7 +1053,13 @@ class ContourizeMe(object):
 
 
 
-if __name__ == '__main__':
+# This main function is an "entry point" for the program as defined in
+# setup.py . The function must not take any arguments, so we must
+# read any command line arguments from sys.argv instead.
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
+
     parser = argparse.ArgumentParser(description="allows the user to slide to a values for 8-bit pixel thresholding")
     parser.add_argument("image", default = "None")
     parser.add_argument("--movie", default = "None")

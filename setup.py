@@ -7,7 +7,25 @@ setup(
     name='MeshmerizeMe',
     version='1.0.dev0',
     packages=['MeshmerizeMe'],
-    scripts=['MeshmerizeMe/scripts/MeshmerizeMe', 'MeshmerizeMe/scripts/ContourizeMe'],
+    entry_points={
+        'console_scripts': [
+            'MeshmerizeMe = MeshmerizeMe.scripts.MeshmerizeMe:main',
+            'ContourizeMe = MeshmerizeMe.scripts.ContourizeMe:main',
+
+            # Uncomment this line if MMePredictBinaryImage is a console_script
+            #'MMePredictBinaryImage = MeshmerizeMe.scripts.MMePredictBinaryImage:main',
+        ],
+
+        # WARNING: gui_scripts cannot use stdin/stdout, so logs must be written to a file.
+        # If we want logs to be written to a console, we must use the scripts as console_scripts instead.
+        'gui_scripts': [
+            'MMeSamplePixels = MeshmerizeMe.scripts.MMeSamplePixels:main',
+            
+            # Uncomment this line if MMePredictBinaryImage is a gui_script
+            #'MMePredictBinaryImage = MeshmerizeMe.scripts.MMePredictBinaryImage:main',
+        ]
+    },
+
     # dependencies
     install_requires=[
         "numpy >= 1.9.1",
