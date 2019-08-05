@@ -6,7 +6,7 @@ import sys
 setup(
     name='MeshmerizeMe',
     version='1.0.dev0',
-    packages=['MeshmerizeMe'],
+    packages=['MeshmerizeMe', 'MeshmerizeMe.scripts'],
     entry_points={
         'console_scripts': [
             'MeshmerizeMe = MeshmerizeMe.scripts.MeshmerizeMe:main',
