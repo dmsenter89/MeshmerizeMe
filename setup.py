@@ -6,8 +6,28 @@ import sys
 setup(
     name='MeshmerizeMe',
     version='1.0.dev0',
-    packages=['MeshmerizeMe'],
-    scripts=['MeshmerizeMe/scripts/MeshmerizeMe', 'MeshmerizeMe/scripts/ContourizeMe'],
+    packages=['MeshmerizeMe', 'MeshmerizeMe.scripts'],
+    entry_points={
+        'console_scripts': [
+            'MeshmerizeMe = MeshmerizeMe.scripts.MeshmerizeMe:main',
+            'MMeSolveSVC = MeshmerizeMe.scripts.MMeSolveSVC:main',
+
+            # These should be moved to gui_scripts if their logs should not be written to stdout.
+            'ContourizeMe = MeshmerizeMe.scripts.ContourizeMe:main',
+            'MMeSamplePixels = MeshmerizeMe.scripts.MMeSamplePixels:main',
+
+            # Uncomment this line if MMePredictBinaryImage is a console_script
+            #'MMePredictBinaryImage = MeshmerizeMe.scripts.MMePredictBinaryImage:main',
+        ],
+
+        # WARNING: gui_scripts cannot use stdin/stdout, so logs must be written to a file.
+        # If we want logs to be written to a console, we must use the scripts as console_scripts instead.
+        'gui_scripts': [            
+            # Uncomment this line if MMePredictBinaryImage is a gui_script, and its logs should not be written to stdout.
+            #'MMePredictBinaryImage = MeshmerizeMe.scripts.MMePredictBinaryImage:main',
+        ]
+    },
+
     # dependencies
     install_requires=[
         "numpy >= 1.9.1",
@@ -18,11 +38,14 @@ setup(
         "scipy",
         "scikit-image",
         "scikit-learn",
+        "opencv-python >= 4.1.0.25",
+        "Pmw >= 2.0.1",
+        "tqdm >= 4.32.1",
         ],
 
-    author='Michael Senter and Dylan Ray',
-    author_email='ddray1993@gmail.com',
-    description='MeshmerizeMe is a python script intended to convert SVG files into geometry files for use with IBAMR and IB2D. Also includes the ability to plot .vertex files to verify the geometry looks as intended.',
+    author='Michael Senter, Dylan Ray, and Steven Thomas',
+    author_email='dmsenter@live.unc.edu',
+    description='MeshmerizeMe is a Python script intended to convert SVG files into geometry files for use with IBAMR and IB2D. Also includes the ability to plot .vertex files to verify the geometry looks as intended.',
     license='GNU GPLv3',
     keywords='immersed boundary, mesh, computer vision',
     url='https://dmsenter89.github.io/project/meshmerizeme/',

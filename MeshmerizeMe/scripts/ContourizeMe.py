@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
 ContourizeMe
 
@@ -54,7 +51,6 @@ import os
 
 eps = np.finfo(float).eps
 
-# To add into dependencies: progressbar, Pmw
 
 def map_uint16_to_uint8(img, lower_bound=None, upper_bound=None):
     '''
@@ -102,8 +98,6 @@ imgray = None
 
 from scipy.optimize import minimize
 from scipy.spatial.distance import euclidean
-import progressbar
-
 import random
 
 class AutoScrollbar(Scrollbar):
@@ -627,7 +621,6 @@ class ContourizeMe(object):
         """
         # Load the image
         self.im = cv2.imread(im_path)
-
         self.transformer = Transformer(self)
         self.manualThresh = True
         self.hidden = True
@@ -640,9 +633,9 @@ class ContourizeMe(object):
 
         if self.im is None:
             # read with the alternate method
-            self.im = imread(os.path.abspath(args.image))
+            self.im = imread(os.path.abspath(im_path))
 
-            if len(np.where(im > 255)[0]) > 0:
+            if len(np.where(self.im > 255)[0]) > 0:
                 self.im = map_uint16_to_uint8(self.im)
             self.imgray = cv2.cvtColor(self.im, cv2.COLOR_BGR2GRAY)
         elif len(self.im.shape) == 3:
@@ -1056,7 +1049,13 @@ class ContourizeMe(object):
 
 
 
-if __name__ == '__main__':
+# This main function is an "entry point" for the program as defined in
+# setup.py . The function must not take any arguments, so we must
+# read any command line arguments from sys.argv instead.
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
+
     parser = argparse.ArgumentParser(description="allows the user to slide to a values for 8-bit pixel thresholding")
     parser.add_argument("image", default = "None")
     parser.add_argument("--movie", default = "None")
