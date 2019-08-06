@@ -10,7 +10,8 @@ setup(
     entry_points={
         'console_scripts': [
             'MeshmerizeMe = MeshmerizeMe.scripts.MeshmerizeMe:main',
-            
+            'MMeSolveSVC = MeshmerizeMe.scripts.MMeSolveSVC:main',
+
             # These should be moved to gui_scripts if their logs should not be written to stdout.
             'ContourizeMe = MeshmerizeMe.scripts.ContourizeMe:main',
             'MMeSamplePixels = MeshmerizeMe.scripts.MMeSamplePixels:main',
