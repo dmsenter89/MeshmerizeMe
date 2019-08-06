@@ -51,7 +51,6 @@ import os
 
 eps = np.finfo(float).eps
 
-# To add into dependencies: progressbar, Pmw
 
 def map_uint16_to_uint8(img, lower_bound=None, upper_bound=None):
     '''
@@ -99,8 +98,6 @@ imgray = None
 
 from scipy.optimize import minimize
 from scipy.spatial.distance import euclidean
-import progressbar
-
 import random
 
 class AutoScrollbar(Scrollbar):

@@ -10,8 +10,7 @@ setup(
     entry_points={
         'console_scripts': [
             'MeshmerizeMe = MeshmerizeMe.scripts.MeshmerizeMe:main',
-            'ContourizeMe = MeshmerizeMe.scripts.ContourizeMe:main',
-
+            
             # Uncomment this line if MMePredictBinaryImage is a console_script
             #'MMePredictBinaryImage = MeshmerizeMe.scripts.MMePredictBinaryImage:main',
         ],
@@ -19,6 +18,7 @@ setup(
         # WARNING: gui_scripts cannot use stdin/stdout, so logs must be written to a file.
         # If we want logs to be written to a console, we must use the scripts as console_scripts instead.
         'gui_scripts': [
+            'ContourizeMe = MeshmerizeMe.scripts.ContourizeMe:main',
             'MMeSamplePixels = MeshmerizeMe.scripts.MMeSamplePixels:main',
             
             # Uncomment this line if MMePredictBinaryImage is a gui_script
@@ -39,7 +39,6 @@ setup(
         "scikit-learn",
         "opencv-python >= 4.1.0.25",
         "Pmw >= 2.0.1",
-        "progressbar >= 2.5",
         ],
 
     author='Michael Senter, Dylan Ray, and Steven Thomas',
