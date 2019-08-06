@@ -11,17 +11,18 @@ setup(
         'console_scripts': [
             'MeshmerizeMe = MeshmerizeMe.scripts.MeshmerizeMe:main',
             
+            # These should be moved to gui_scripts if their logs should not be written to stdout.
+            'ContourizeMe = MeshmerizeMe.scripts.ContourizeMe:main',
+            'MMeSamplePixels = MeshmerizeMe.scripts.MMeSamplePixels:main',
+
             # Uncomment this line if MMePredictBinaryImage is a console_script
             #'MMePredictBinaryImage = MeshmerizeMe.scripts.MMePredictBinaryImage:main',
         ],
 
         # WARNING: gui_scripts cannot use stdin/stdout, so logs must be written to a file.
         # If we want logs to be written to a console, we must use the scripts as console_scripts instead.
-        'gui_scripts': [
-            'ContourizeMe = MeshmerizeMe.scripts.ContourizeMe:main',
-            'MMeSamplePixels = MeshmerizeMe.scripts.MMeSamplePixels:main',
-            
-            # Uncomment this line if MMePredictBinaryImage is a gui_script
+        'gui_scripts': [            
+            # Uncomment this line if MMePredictBinaryImage is a gui_script, and its logs should not be written to stdout.
             #'MMePredictBinaryImage = MeshmerizeMe.scripts.MMePredictBinaryImage:main',
         ]
     },
