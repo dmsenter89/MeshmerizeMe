@@ -1,7 +1,8 @@
 # MeshmerizeMe
 MeshmerizeMe is a set of Python scripts intended to convert image files into
-geometry files for use with IBAMR and IB2D. Also includes the ability to
-plot the resulting .vertex files to verify the geometry looks as intended.
+geometry files for use with immersed boundary software like IBAMR and IB2D. 
+It also includes the ability to plot the resulting .vertex files to verify 
+the geometry looks as intended.
 
 This version will only handle 2D code. See the project wiki for more
 information.
@@ -22,10 +23,24 @@ information.
 To convert image files into the intermediate SVG format, call the 
 `ContourizeMe` script. It will start a GUI for extracting contours. 
 
-To mesh the resulting SVG files, call the `MeshmerizeMe` script. 
+```
+usage: ContourizeMe [-h] [--movie MOVIE] [--scale SCALE] image
+
+allows the user to slide to a values for 8-bit pixel thresholding
+
+positional arguments:
+  image
+
+optional arguments:
+  -h, --help     show this help message and exit
+  --movie MOVIE
+  --scale SCALE
+```
+
+Call the `MeshmerizeMe` script to mesh the resulting SVG files.
 
 ```
-MeshmerizeMe.py [-h] [--gui] [-i | -p] [fname [fname ...]]
+usage: MeshmerizeMe [-h] [-i | -p] [fname [fname ...]]
 
 Welcome to MeshmerizeMe. MeshmerizeMe is a Python script intended to assist
 with creating geometries for fluid simulations using IBAMR and IB2d. It uses a
@@ -38,7 +53,6 @@ positional arguments:
 
 optional arguments:
   -h, --help        show this help message and exit
-  --gui             Start GUI mode. Ignores other parameters.
   -i, --input-file  Mesh SVG file(s). Default option. Exclusive with plot.
   -p, --plot        Plot existing .vertex file(s). Exclusive with input-file.
 
@@ -49,8 +63,8 @@ process them.
 ```
 
 # Installation
-
-See the wiki for installation instructions.
+To install, download the repository and use `pip install .`.
 
 ## Requirements and Dependencies:
-Python 3.x. Matlab. NumPy. [tqdm](https://pypi.python.org/pypi/tqdm). [svg.path](https://pypi.python.org/pypi/svg.path). [OpenCV](https://pypi.org/project/opencv-python/).
+
+MeshmerizeMe was written for Python 3. Install requires are included in `setup.py`. A `requirements.txt` is also provided for user convenience. The minimal package requirements are: opencv, pandas, Pmw, scikit-image and scikit-learn, svgpathtools, and tqdm.
