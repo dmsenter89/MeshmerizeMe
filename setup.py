@@ -22,7 +22,7 @@ setup(
 
         # WARNING: gui_scripts cannot use stdin/stdout, so logs must be written to a file.
         # If we want logs to be written to a console, we must use the scripts as console_scripts instead.
-        'gui_scripts': [            
+        'gui_scripts': [
             # Uncomment this line if MMePredictBinaryImage is a gui_script, and its logs should not be written to stdout.
             #'MMePredictBinaryImage = MeshmerizeMe.scripts.MMePredictBinaryImage:main',
         ]
@@ -30,16 +30,12 @@ setup(
 
     # dependencies
     install_requires=[
-        "numpy >= 1.9.1",
+        "opencv-python >= 4.1.0.25",
         "pandas >= 0.15.2",
-        "matplotlib >= 1.3.1",
-        "svgpathtools",
-        "svgwrite",
-        "scipy",
+        "Pmw >= 2.0.1",
         "scikit-image",
         "scikit-learn",
-        "opencv-python >= 4.1.0.25",
-        "Pmw >= 2.0.1",
+        "svgpathtools",
         "tqdm >= 4.32.1",
         ],
 
@@ -54,7 +50,7 @@ setup(
                  'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
                  'Operating System :: OS Independent',
                  'Operating System :: POSIX :: Linux',
-                 'Programming Language :: Python :: 2.7',
+                 'Programming Language :: Python :: 3.7',
                  'Topic :: Multimedia :: Graphics',
                  'Topic :: Multimedia :: Graphics :: 2D Modeling',
                  'Topic :: Multimedia :: Graphics :: Capture :: Digital Camera',
