@@ -63,7 +63,14 @@ process them.
 ```
 
 # Installation
-To install, download the repository and use `pip install .`.
+Use `pip install .` from the main package directory to install MeshmerizeMe.
+If you prefer using a virtual environment with the supplied requirements.txt,
+use
+
+```shell
+$ pip install . --no-deps
+$ pip install -r requirements.txt  
+```
 
 ## Requirements and Dependencies:
 
