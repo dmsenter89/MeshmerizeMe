@@ -9,16 +9,17 @@ IBAMR.
 
 ISSUES:
     The SVG file needs to be in a very specific format for this to work.
-    1) the file needs to have its height and width given in pixels, as simple
+    1) The file needs to have its height and width given in pixels as simple
         float numbers, not in millimeters or anything, OR specify a viewBox.
-    2) The svg *cannot* be using the translate feature or any other feature
-        that alters its coordinate system relative to the viewbox.
-    3) The svg parser cannot currently handle groups (<g> elements).
+    2) The file can not contain:
+        - Nested viewBoxes/viewPorts
+        - Nested <svg> elements
+        - Use of the "preserveAspectRatio" attribute
+        - <use>, <symbol>, and <def> tags
 """
 
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
-#from svg.path import parse_path
 from svgpathtools import parse_path
 import svgpathtools
 from numpy import linspace
