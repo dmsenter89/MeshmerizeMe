@@ -76,11 +76,11 @@ def get_sim_parameters(fname, params):
                         params['Ny'] = int(s)
             elif 'Lx' in line:
                 for s in line.split():
-                    if re.match("^\d+?(\.\d+)?$", s) is not None:
+                    if re.match(r"^\d+?(\.\d+)?$", s) is not None:
                         params['Lx'] = float(s)
             elif 'Ly' in line:
                 for s in line.split():
-                    if re.match("^\d+?(\.\d+)?$", s) is not None:
+                    if re.match(r"^\d+?(\.\d+)?$", s) is not None:
                         params['Ly'] = float(s)
             elif 'string_name' in line:
                 split_line = line.split()
