@@ -88,7 +88,7 @@ def get_sim_parameters(fname, params):
                 sname = sname.strip('"')
                 logger.info(("sname={}".format(sname)))
                 params['SimName'] = sname
-    params['Ds'] = 0.5*params['Lx']/params['Nx']
+    params['Ds'] = 0.5 * params['Lx'] / params['Nx']
     return params
 
 
@@ -105,14 +105,12 @@ def coord_transform(z, params):
     Returns:
         complex(x,y): complex number representing point in input2d coordinates.
     """
-    # w = params['width']
-    # h = params['height']
     w, h = params['Space'].get_max_size()
     x, y = params['Space'].get_origin()
     Lx = params['Lx']
     Ly = params['Ly']
-    xnew = (z.real-x)*Lx/(w-x)
-    ynew = (h-z.imag)*Ly/(h-y)
+    xnew = (z.real - x) * Lx / (w - x)
+    ynew = (h - z.imag) * Ly / (h - y)
     return complex(xnew, ynew)
 
 
@@ -127,36 +125,28 @@ def points_on_path(path, params):
         numpy array with the necessary number of evenly distributed points
         to dissect path objects at the necessary density.
     """
-    #if method==1:
-    #    length = path.length()  # lenght of path in svg system
-    #    z = complex(length, params['height'])
-    #    new_len = abs(coord_transform(z, params))
-    #    num_of_pts = new_len//params['Ds']
-    #    num_of_pts += 1
-    #    point_array = linspace(0,1, num_of_pts)
-    #else:
     # setup two temporary dummy points
     points = [0]
     p0 = 0
     p1 = 0
     ds = params['Ds']
     # keep track   of the ratio of 2nd to 1st deriv
-    rato = np.abs(path.derivative(p0, 2))/np.abs(path.derivative(p0, 1))
+    rato = np.abs(path.derivative(p0, 2)) / np.abs(path.derivative(p0, 1))
     while p1<1:
         p1 = p0 + ds / np.abs(path.derivative(p0)) 
         if p1>1.0: # make sure we don't run outside of [0,1]
             break
-        ratn = np.abs(path.derivative(p1, 2))/np.abs(path.derivative(p1))
+        ratn = np.abs(path.derivative(p1, 2)) / np.abs(path.derivative(p1))
         if ratn/rato > 3: # large change in ratio, be careful
             try:
                 # use previous two points as step instead
-                p1 = p0 + (points[-1]-points[-2])
+                p1 = p0 + (points[-1] - points[-2])
             except:
                 # we don't have two steps available yet
-                p1 = p0 + (1/3)*(p1-p0) # play with differnt vals
+                p1 = p0 + (1/3) * (p1 - p0) # play with differnt vals
             if p1>1.0: # make sure we don't run outside of [0,1]
                 break
-            ratn = np.abs(path.derivative(p1, 2))/np.abs(path.derivative(p1))
+            ratn = np.abs(path.derivative(p1, 2)) / np.abs(path.derivative(p1))
         points.append(p1)
         p0 = p1
     point_array = np.asarray(points)
@@ -175,18 +165,27 @@ def make_vertices(path_list, params):
         svg file.
     """
     vertex_vec = []
+    ds = params['Ds']
+    cur_point_index = 0
     logger.info("Begin making vertices.")
+    
     for path in tqdm(path_list):
         path_as_svgpathtools_path = parse_path( path.get('d') )
         path_as_svgpathtools_path = transform( path_as_svgpathtools_path, path.get_aggregate_transform_matrix() )
-        cvert_vec = []
         pts = points_on_path(path_as_svgpathtools_path, params)
         for p in pts:
             z = path_as_svgpathtools_path.point(p)
             zn = coord_transform(z, params)
-            vpoint = Vertex(zn.real, zn.imag)
-            cvert_vec.append(vpoint)
-        vertex_vec.extend(cvert_vec)
+            cur_point = Vertex(zn.real, zn.imag)
+            vertex_vec.append(cur_point)
+            if cur_point_index > 0:
+                previous_point = vertex_vec[cur_point_index - 1]
+                distance = chk_vertex_dist(cur_point, previous_point)
+                rel_error = np.abs((distance - ds) / ds)
+                if distance > ds:
+                    logger.warning(f"Max Euclidean distance exceeded by {rel_error}% at vertex { cur_point.getPos() } on the path with attributes { path.attr }.") 
+            cur_point_index += 1
+    
     return vertex_vec
 
 
@@ -200,9 +199,9 @@ def chk_vertex_dist(a, b):
     Returns:
         Euclidean distance between vertex a and vertex b.
     """
-    dx = a.x-b.x
-    dy = a.y-b.y
-    return (dx**2+dy**2)**(1/2)
+    dx = a.x - b.x
+    dy = a.y - b.y
+    return (dx**2 + dy**2) ** (1/2)
 
 
 class Space():
@@ -329,6 +328,9 @@ class SvgObject():
             self.type = node.tag    # str holds name of object
         self.attr = node.attrib  # dic with attributes of element
         self.parent = None
+    
+    def __str__(self):
+        return f"{self.type} | {self.attr}"
 
     def get(self, attribute):
         """ Getter returns an attribute from the attribute dictionary as string.
@@ -354,9 +356,6 @@ class SvgObject():
             cur_SvgObject = cur_SvgObject.parent
         return transform_matrix
 
-    def print_object(self):
-        """Print node name and attribute dictionary to console."""
-        print(("{} | {}".format(self.type, self.attr)))
 
 
 # This function was taken as is from the svgpathtools library.
