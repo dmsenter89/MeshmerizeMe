@@ -131,13 +131,13 @@ def points_on_path(path, params):
     p1 = 0
     ds = params['Ds']
     # keep track   of the ratio of 2nd to 1st deriv
-    rato = np.abs(path.derivative(p0, 2)) / np.abs(path.derivative(p0, 1))
+    rat0 = np.abs(path.derivative(p0, 2)) / np.abs(path.derivative(p0, 1))
     while p1<1:
         p1 = p0 + ds / np.abs(path.derivative(p0)) 
         if p1>1.0: # make sure we don't run outside of [0,1]
             break
-        ratn = np.abs(path.derivative(p1, 2)) / np.abs(path.derivative(p1))
-        if ratn/rato > 3: # large change in ratio, be careful
+        rat1 = np.abs(path.derivative(p1, 2)) / np.abs(path.derivative(p1))
+        if rat0 != 0.0 and rat1/rat0 > 3: # large change in ratio, be careful
             try:
                 # use previous two points as step instead
                 p1 = p0 + (points[-1] - points[-2])
@@ -146,9 +146,10 @@ def points_on_path(path, params):
                 p1 = p0 + (1/3) * (p1 - p0) # play with differnt vals
             if p1>1.0: # make sure we don't run outside of [0,1]
                 break
-            ratn = np.abs(path.derivative(p1, 2)) / np.abs(path.derivative(p1))
+            rat1 = np.abs(path.derivative(p1, 2)) / np.abs(path.derivative(p1))
         points.append(p1)
         p0 = p1
+        rat0 = rat1
     point_array = np.asarray(points)
     return point_array
 
