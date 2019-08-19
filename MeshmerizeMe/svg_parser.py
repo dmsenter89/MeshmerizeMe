@@ -29,6 +29,7 @@ from . import meshmerizeme_logger as logger
 import re
 import warnings
 
+ERROR_TOL = 0.10 # Error tolerance: 10% relative error
 
 def get_paths(fname, params={}):
     """ Extract all paths and size from an svg file.
@@ -166,6 +167,8 @@ def make_vertices(path_list, params):
         svg file.
     """
     vertex_vec = []
+    error_vec = []
+    warning_messages = []
     ds = params['Ds']
     cur_point_index = 0
     logger.info("Begin making vertices.")
@@ -183,10 +186,17 @@ def make_vertices(path_list, params):
                 previous_point = vertex_vec[cur_point_index - 1]
                 distance = chk_vertex_dist(cur_point, previous_point)
                 rel_error = np.abs((distance - ds) / ds)
-                if distance > ds:
-                    logger.warning(f"Max Euclidean distance exceeded by {rel_error}% at vertex { cur_point.getPos() } on the path with attributes { path.attr }.") 
+                error_vec.append(rel_error)
+                if rel_error > ERROR_TOL:
+                    warning_messages.append(f"Max Euclidean distance exceeded by {100*rel_error:.5f}% at vertex { cur_point.getPos() } on the path with attributes { path.attr }.") 
             cur_point_index += 1
     
+    for warning_message in warning_messages:
+        logger.warning(warning_message)
+    logger.info(f"Summary - Mean Rel. Err:  {100*np.mean(error_vec):.5f}%.")
+    if len(warning_messages) > 0:
+        logger.info("WARNING - Some points have spacing greater than the defined error tolerance. Please see the log file for details.")
+
     return vertex_vec
 
 
