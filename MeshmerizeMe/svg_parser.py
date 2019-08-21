@@ -134,7 +134,7 @@ def points_on_path(path, params):
     # keep track   of the ratio of 2nd to 1st deriv
     rat0 = np.abs(path.derivative(p0, 2)) / np.abs(path.derivative(p0, 1))
     while p1<1:
-        p1 = p0 + ds / np.abs(path.derivative(p0)) 
+        p1 = p0 + ds / np.abs(path.derivative(p0))
         if p1>1.0: # make sure we don't run outside of [0,1]
             break
         rat1 = np.abs(path.derivative(p1, 2)) / np.abs(path.derivative(p1))
@@ -155,6 +155,19 @@ def points_on_path(path, params):
     return point_array
 
 
+def transform_matrix(params):
+    xmax, ymax = params['Space'].get_max_size()
+    xmin, ymin = params['Space'].get_origin()
+    w = xmax-xmin
+    h = ymax-ymin
+    Lx = params['Lx']
+    Ly = params['Ly']
+    A = np.diag([Lx/w, Ly/h, 1])
+    A[0,2] = -Lx*xmin/w
+    A[1,2] = -Ly*ymin/h
+    return A
+
+
 def make_vertices(path_list, params):
     """Takes the paths and turns them into a list of vertex points.
 
@@ -170,27 +183,44 @@ def make_vertices(path_list, params):
     error_vec = []
     warning_messages = []
     ds = params['Ds']
-    cur_point_index = 0
     logger.info("Begin making vertices.")
-    
+
+    A = transform_matrix(params) # Create point transform to target space
+
     for path in tqdm(path_list):
         path_as_svgpathtools_path = parse_path( path.get('d') )
         path_as_svgpathtools_path = transform( path_as_svgpathtools_path, path.get_aggregate_transform_matrix() )
-        pts = points_on_path(path_as_svgpathtools_path, params)
-        for p in pts:
-            z = path_as_svgpathtools_path.point(p)
-            zn = coord_transform(z, params)
-            cur_point = Vertex(zn.real, zn.imag)
-            vertex_vec.append(cur_point)
-            if cur_point_index > 0:
-                previous_point = vertex_vec[cur_point_index - 1]
-                distance = chk_vertex_dist(cur_point, previous_point)
-                rel_error = np.abs((distance - ds) / ds)
-                error_vec.append(rel_error)
-                if rel_error > ERROR_TOL:
-                    warning_messages.append(f"Max Euclidean distance exceeded by {100*rel_error:.5f}% at vertex { cur_point.getPos() } on the path with attributes { path.attr }.") 
-            cur_point_index += 1
-    
+        cur_point_index = 0
+
+        for segment in path_as_svgpathtools_path:
+            # Transform curves from SVG space -> experimental space
+            ctrl_points_svg = np.asarray(segment.bpoints() )
+            ctrl_points_svg_mat = np.ones((3, len(ctrl_points_svg) ))
+            ctrl_points_svg_mat[0,:] = ctrl_points_svg.real
+            ctrl_points_svg_mat[1,:] = ctrl_points_svg.imag
+            ctrl_points_transformed_mat = np.matmul(A, ctrl_points_svg_mat)
+            ctrl_points_transformed = ctrl_points_transformed_mat[0] + 1j* ctrl_points_transformed_mat[1]
+            segment_transformed = svgpathtools.bpoints2bezier(ctrl_points_transformed)
+
+            pts = points_on_path(segment_transformed, params)
+
+    #        pts = points_on_path(path_as_svgpathtools_path, params)
+            for p in pts:
+                #print(f"Num of pts: {len(pts)}")
+    #            z = path_as_svgpathtools_path.point(p)
+                z = segment_transformed.point(p)
+                #zn = coord_transform(z, params)
+                cur_point = Vertex(z.real, z.imag)
+                vertex_vec.append(cur_point)
+                if cur_point_index > 0:
+                    previous_point = vertex_vec[cur_point_index - 1]
+                    distance = chk_vertex_dist(cur_point, previous_point)
+                    rel_error = np.abs((distance - ds) / ds)
+                    error_vec.append(rel_error)
+                    if rel_error > ERROR_TOL:
+                        warning_messages.append(f"Max Euclidean distance exceeded by {100*rel_error:.5f}% at vertex { cur_point.getPos() } on the path with attributes { path.attr }.")
+                cur_point_index += 1
+
     for warning_message in warning_messages:
         logger.warning(warning_message)
     logger.info(f"Summary - Mean Rel. Err:  {100*np.mean(error_vec):.5f}%.")
@@ -302,9 +332,9 @@ class Svg():
             curElementAndParent = element_tree_stack.pop()
             curElement = curElementAndParent["element"]
             parentOfCurElement = curElementAndParent["parent"]
-            
+
             curElementAsSvgObject = SvgObject(curElement)
-            curElementAsSvgObject.parent = parentOfCurElement            
+            curElementAsSvgObject.parent = parentOfCurElement
             objects.append(curElementAsSvgObject)
 
             for child_element in list(curElement):
@@ -339,7 +369,7 @@ class SvgObject():
             self.type = node.tag    # str holds name of object
         self.attr = node.attrib  # dic with attributes of element
         self.parent = None
-    
+
     def __str__(self):
         return f"{self.type} | {self.attr}"
 
