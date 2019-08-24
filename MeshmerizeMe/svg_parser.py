@@ -179,18 +179,18 @@ def make_vertices(path_list, params):
         vertex_vec: list containing all vertex points obtained from the
         svg file.
     """
+    logger.info("Begin making vertices.")
+
     vertex_vec = []
     error_vec = []
     warning_messages = []
     ds = params['Ds']
-    logger.info("Begin making vertices.")
-
+    segments = []
     A = transform_matrix(params) # Create point transform to target space
 
     for path in tqdm(path_list):
         path_as_svgpathtools_path = parse_path( path.get('d') )
         path_as_svgpathtools_path = transform( path_as_svgpathtools_path, path.get_aggregate_transform_matrix() )
-        cur_point_index = 0
 
         for segment in path_as_svgpathtools_path:
             # Transform curves from SVG space -> experimental space
@@ -201,25 +201,22 @@ def make_vertices(path_list, params):
             ctrl_points_transformed_mat = np.matmul(A, ctrl_points_svg_mat)
             ctrl_points_transformed = ctrl_points_transformed_mat[0] + 1j* ctrl_points_transformed_mat[1]
             segment_transformed = svgpathtools.bpoints2bezier(ctrl_points_transformed)
+            segments.append(segment_transformed)
 
-            pts = points_on_path(segment_transformed, params)
+    path_transformed = svgpathtools.Path(*segments)
+    pts = points_on_path(path_transformed, params)
 
-    #        pts = points_on_path(path_as_svgpathtools_path, params)
-            for p in pts:
-                #print(f"Num of pts: {len(pts)}")
-    #            z = path_as_svgpathtools_path.point(p)
-                z = segment_transformed.point(p)
-                #zn = coord_transform(z, params)
-                cur_point = Vertex(z.real, z.imag)
-                vertex_vec.append(cur_point)
-                if cur_point_index > 0:
-                    previous_point = vertex_vec[cur_point_index - 1]
-                    distance = chk_vertex_dist(cur_point, previous_point)
-                    rel_error = np.abs((distance - ds) / ds)
-                    error_vec.append(rel_error)
-                    if rel_error > ERROR_TOL:
-                        warning_messages.append(f"Max Euclidean distance exceeded by {100*rel_error:.5f}% at vertex { cur_point.getPos() } on the path with attributes { path.attr }.")
-                cur_point_index += 1
+    for cur_point_index, p in enumerate(pts):
+        z = path_transformed.point(p)
+        cur_point = Vertex(z.real, z.imag)
+        vertex_vec.append(cur_point)
+        if cur_point_index > 0:
+            previous_point = vertex_vec[cur_point_index - 1]
+            distance = chk_vertex_dist(cur_point, previous_point)
+            rel_error = np.abs((distance - ds) / ds)
+            error_vec.append(rel_error)
+            if rel_error > ERROR_TOL:
+                warning_messages.append(f"Max Euclidean distance exceeded by {100*rel_error:.5f}% at vertex { cur_point.getPos() } on the path with attributes { path.attr }.")
 
     for warning_message in warning_messages:
         logger.warning(warning_message)
