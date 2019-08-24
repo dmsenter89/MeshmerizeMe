@@ -126,33 +126,63 @@ def points_on_path(path, params):
         numpy array with the necessary number of evenly distributed points
         to dissect path objects at the necessary density.
     """
-    # setup two temporary dummy points
-    points = [0]
-    p0 = 0
-    p1 = 0
+
+    def get_point_coords(point_params):
+        return np.asarray([ path.point(T) for T in point_params ])
+
+    def get_segment_lengths(point_coords):
+        return np.abs( point_coords[1:] - point_coords[:-1] )
+ 
+    def get_mean_squared_relative_error(segment_lengths, ds):
+        return np.mean( np.square( (segment_lengths - ds) / ds ) )
+
+    def get_mse_gradient(point_params, ds):
+        num_points = len(point_params)
+        num_segments = num_points - 1
+        point_coords = get_point_coords(point_params)
+        segment_lengths = get_segment_lengths(point_coords)
+        segment_vectors = point_coords[1:] - point_coords[:-1]
+        segment_vectors = np.stack((segment_vectors.real, segment_vectors.imag), -1)
+        path_derivatives = np.asarray([ path.derivative(T) for T in point_params ])
+        path_derivatives = np.stack((path_derivatives.real, path_derivatives.imag), -1)
+        gradient = np.zeros(num_points)
+
+        gradient_term_1 = np.clip( (segment_lengths - ds) * np.power(segment_lengths, -0.5), -99999, 99999)
+        gradient_term_2 = np.asarray([ np.dot( segment_vectors[i], path_derivatives[i+1] ) for i in range(num_segments) ])
+        gradient_term_3 = np.asarray([ np.dot( segment_vectors[i], path_derivatives[i] ) for i in range(num_segments) ])
+
+        gradient[1:] += gradient_term_1 * gradient_term_2
+        gradient[:-1] -= gradient_term_1 * gradient_term_3
+        gradient /= num_segments * ( ds ** 2 )
+
+        return gradient
+
     ds = params['Ds']
-    # keep track   of the ratio of 2nd to 1st deriv
-    rat0 = np.abs(path.derivative(p0, 2)) / np.abs(path.derivative(p0, 1))
-    while p1<1:
-        p1 = p0 + ds / np.abs(path.derivative(p0))
-        if p1>1.0: # make sure we don't run outside of [0,1]
-            break
-        rat1 = np.abs(path.derivative(p1, 2)) / np.abs(path.derivative(p1))
-        if rat0 != 0.0 and rat1/rat0 > 3: # large change in ratio, be careful
-            try:
-                # use previous two points as step instead
-                p1 = p0 + (points[-1] - points[-2])
-            except:
-                # we don't have two steps available yet
-                p1 = p0 + (1/3) * (p1 - p0) # play with differnt vals
-            if p1>1.0: # make sure we don't run outside of [0,1]
-                break
-            rat1 = np.abs(path.derivative(p1, 2)) / np.abs(path.derivative(p1))
-        points.append(p1)
-        p0 = p1
-        rat0 = rat1
-    point_array = np.asarray(points)
-    return point_array
+    num_segments = int( np.ceil(path.length() / ds) )
+    num_points = num_segments + 1
+    
+    point_params =  np.linspace(0, 1, num_points) #np.sort( np.random.uniform(0, 1, num_points) )
+    point_coords = get_point_coords(point_params)
+    segment_lengths = get_segment_lengths(point_coords)
+    mse = get_mean_squared_relative_error(segment_lengths, ds)
+    mse_difference = 1
+    max_iter = 50
+    cur_iter = 0
+    step_size = 0.0005
+
+    while mse_difference > 1e-6 and cur_iter < max_iter:
+        cur_iter += 1
+        print(f"{cur_iter} / {max_iter}. mse={mse}. mse_diff={mse_difference}")
+        mse_gradient = get_mse_gradient(point_params, ds)
+        point_params -= step_size * mse_gradient
+        point_params = np.clip( point_params , 0, 1 )
+        point_coords = get_point_coords(point_params)
+        segment_lengths = get_segment_lengths(point_coords)
+        new_mse = get_mean_squared_relative_error(segment_lengths, ds)
+        mse_difference = mse - new_mse
+        mse = new_mse
+
+    return point_params
 
 
 def transform_matrix(params):
