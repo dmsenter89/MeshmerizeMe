@@ -147,7 +147,7 @@ def points_on_path(path, params):
         path_derivatives = np.stack((path_derivatives.real, path_derivatives.imag), -1)
         gradient = np.zeros(num_points)
 
-        gradient_term_1 = np.clip( (segment_lengths - ds) * np.power(segment_lengths, -0.5), -99999, 99999)
+        gradient_term_1 = np.clip( (segment_lengths - ds) * np.power(segment_lengths, -1), -99999, 99999)
         gradient_term_2 = np.asarray([ np.dot( segment_vectors[i], path_derivatives[i+1] ) for i in range(num_segments) ])
         gradient_term_3 = np.asarray([ np.dot( segment_vectors[i], path_derivatives[i] ) for i in range(num_segments) ])
 
@@ -168,9 +168,9 @@ def points_on_path(path, params):
     mse_difference = 1
     max_iter = 50
     cur_iter = 0
-    step_size = 0.0005
+    step_size = 0.00005
 
-    while mse_difference > 1e-6 and cur_iter < max_iter:
+    while np.abs(mse_difference) > 1e-6 and cur_iter < max_iter:
         cur_iter += 1
         print(f"{cur_iter} / {max_iter}. mse={mse}. mse_diff={mse_difference}")
         mse_gradient = get_mse_gradient(point_params, ds)
