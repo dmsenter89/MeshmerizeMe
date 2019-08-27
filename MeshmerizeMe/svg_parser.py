@@ -334,7 +334,7 @@ class Svg():
             curElementAsSvgObject.parent = parentOfCurElement
             objects.append(curElementAsSvgObject)
 
-            for child_element in list(curElement):
+            for child_element in list(curElement)[::-1]: # Push the first child to the stack last.
                 push_element_and_its_parent_to_stack(child_element, curElementAsSvgObject)
 
         return objects
