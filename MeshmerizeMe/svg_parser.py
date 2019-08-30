@@ -28,7 +28,7 @@ from .geo_obj import Vertex, writeFile
 from . import meshmerizeme_logger as logger
 import re
 import warnings
-from multiprocessing import Process, Array
+from multiprocessing import Process, Array, Value, Manager
 
 ERROR_TOL = 0.10 # Error tolerance: 10% relative error
 
@@ -116,17 +116,25 @@ def coord_transform(z, params):
     return complex(xnew, ynew)
 
 
-def graph_point_params_and_mse(point_params, iters, costs):
+def graph_point_params_and_mse(point_params, iters, costs, path, show_graph=True):
+    if show_graph is False:
+        return
     import matplotlib.pyplot as plt
     import matplotlib.animation as animation
     fig = plt.figure()
-    ax1 = fig.add_subplot(2,1,1)
-    ax2 = fig.add_subplot(2,1,2)
+    ax1 = fig.add_subplot(3,1,1)
+    ax2 = fig.add_subplot(3,1,2)
+    ax3 = fig.add_subplot(3,1,3)
     def animate(i):
         ax1.clear()
         ax1.hist(point_params, bins=len(point_params)*2)
         ax2.clear()
         ax2.plot(iters, costs)
+        ax3.clear()
+        coords = [path.point(T) for T in point_params]
+        x = [coord.real for coord in coords]
+        y = [coord.imag for coord in coords]
+        ax3.scatter(x, y)
         plt.draw()
     ani = animation.FuncAnimation(fig, animate, interval=1000)
     plt.show()
@@ -173,51 +181,93 @@ def points_on_path(path, params):
 
         return gradient
     
-    def get_graph_args():
-        nonlocal point_params, mse
-        shared_point_params = Array("d", point_params)
-        iters = Array("i", [i - 50 for i in range(50)])
-        costs = Array("d", [mse] * 50)
-        return shared_point_params, iters, costs
+    def get_best_subpath_params(path, ds, min_t=0, max_t=1, point_params=None):
+        def get_graph_args():
+            nonlocal point_params, mse
+            shared_point_params = Array("d", point_params)
+            iters = Array("i", [i - 50 for i in range(50)])
+            costs = Array("d", [mse] * 50)
+            return shared_point_params, iters, costs
 
-    def update_graph_args():
-        nonlocal iters, costs, shared_point_params, mse, point_params
-        iters[:-1] = iters[1:]
-        iters[-1] += 1
-        costs[:-1] = costs[1:]
-        costs[-1] = mse
-        shared_point_params[:] = point_params
-
-    ds = params['Ds']
-    num_segments = int( np.ceil(path.length() / ds) )
-    num_points = num_segments + 1
-    
-    point_params =  np.linspace(0, 1, num_points) #np.sort( np.random.uniform(0, 1, num_points) )
-    point_coords = get_point_coords(point_params)
-    segment_lengths = get_segment_lengths(point_coords)
-    mse = get_mean_squared_relative_error(segment_lengths, ds)
-    mse_difference = 1
-    max_iter = 50
-    cur_iter = 0
-    step_size = 0.00005
-
-    # shared_point_params, iters, costs = get_graph_args()
-    # p = Process(target=graph_point_params_and_mse, args=(shared_point_params, iters, costs))
-    # p.start()
-
-    while np.abs(mse_difference) > 1e-6 and cur_iter < max_iter:
-        cur_iter += 1
-        print(f"{cur_iter} / {max_iter}. mse={mse}. mse_diff={mse_difference}")
-        mse_gradient = get_mse_gradient(point_params, ds)
-        point_params -= step_size * mse_gradient
-        point_params = np.clip( point_params , 0, 1 )
+        def update_graph_args():
+            nonlocal iters, costs, shared_point_params, mse, point_params
+            iters[:-1] = iters[1:]
+            iters[-1] += 1
+            costs[:-1] = costs[1:]
+            costs[-1] = mse
+            shared_point_params[:] = point_params
+        num_segments = int( np.ceil(path.length(T0=min_t, T1=max_t) / ds) )
+        num_points = num_segments + 1        
+        should_show_graph = False
+        step_size = 0.000005
+        if point_params is None:
+            curviness = np.abs( path.derivative(max_t) - path.derivative(min_t) )
+            if curviness > 0.2:
+                num_segments -= 2
+                num_points -= 2
+            point_params =  np.linspace(min_t, max_t, num_points) #np.sort( np.random.uniform(0, 1, num_points) )
+        else:
+            should_show_graph = True
+            num_points = len(point_params)
+            num_segments = num_points - 1
+            step_size *= 10
         point_coords = get_point_coords(point_params)
         segment_lengths = get_segment_lengths(point_coords)
-        new_mse = get_mean_squared_relative_error(segment_lengths, ds)
-        mse_difference = mse - new_mse
-        mse = new_mse
-    #     update_graph_args()
-    # p.join()
+        mse = get_mean_squared_relative_error(segment_lengths, ds)
+        mse_difference = 1
+        max_iter = 500
+        cur_iter = 0
+
+        shared_point_params, iters, costs = get_graph_args()
+        p = Process(target=graph_point_params_and_mse, args=(shared_point_params, iters, costs, path, should_show_graph))
+        p.start()
+
+        while np.abs(mse_difference) > 1e-6 and cur_iter < max_iter:
+            cur_iter += 1
+            # print(f"{cur_iter} / {max_iter}. mse={mse}. mse_diff={mse_difference}")
+            mse_gradient = get_mse_gradient(point_params, ds)
+            point_params -= step_size * mse_gradient
+            point_params = np.clip( point_params , min_t, max_t )
+            point_coords = get_point_coords(point_params)
+            segment_lengths = get_segment_lengths(point_coords)
+            new_mse = get_mean_squared_relative_error(segment_lengths, ds)
+            mse_difference = mse - new_mse
+            mse = new_mse
+            update_graph_args()
+        p.join()
+
+        return point_params
+
+    ds = params['Ds']
+    subpath_length = ds*25
+    num_subpaths = int( path.length() / subpath_length ) 
+    subpath_boundary_points = [0]
+    for i in range(num_subpaths-1):
+        subpath_boundary_points.append( path.ilength((i+1) * subpath_length) )
+    subpath_boundary_points.append(1)
+
+    def get_best_subpath_params_in_parallel(cur_subpath, point_params):        
+        while cur_subpath.value < num_subpaths:
+            subpath_index = cur_subpath.value
+            cur_subpath.value = subpath_index + 1
+            print(f"{subpath_index} / {num_subpaths} subpaths")
+            point_params.extend( get_best_subpath_params(path, ds, min_t=subpath_boundary_points[subpath_index], max_t=subpath_boundary_points[subpath_index+1]) )
+
+    point_params = None
+    with Manager() as manager:
+        cur_subpath = Value("i", 0)
+        shared_point_params = manager.list()
+        num_parallel_processes = 10
+        parallel_processes = []
+        for i in range(num_parallel_processes):
+            p = Process(target=get_best_subpath_params_in_parallel, args=(cur_subpath, shared_point_params))
+            parallel_processes.append(p)
+            p.start()
+        for p in parallel_processes:
+            p.join()
+        point_params = shared_point_params[:]
+    point_params.sort()
+    point_params = get_best_subpath_params(path, ds, point_params=point_params)
 
     return point_params
 
