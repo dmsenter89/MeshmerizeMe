@@ -124,11 +124,11 @@ def graph_point_params_and_mse(point_params, iters, costs):
     ax2 = fig.add_subplot(2,1,2)
     def animate(i):
         ax1.clear()
-        ax1.hist(point_params, bins=1000)
+        ax1.hist(point_params, bins=len(point_params)*2)
         ax2.clear()
         ax2.plot(iters, costs)
         plt.draw()
-    ani = animation.FuncAnimation(fig, animate, interval=100)
+    ani = animation.FuncAnimation(fig, animate, interval=1000)
     plt.show()
 
 def points_on_path(path, params):
