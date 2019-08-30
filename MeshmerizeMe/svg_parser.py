@@ -28,6 +28,7 @@ from .geo_obj import Vertex, writeFile
 from . import meshmerizeme_logger as logger
 import re
 import warnings
+from multiprocessing import Process, Array
 
 ERROR_TOL = 0.10 # Error tolerance: 10% relative error
 
@@ -115,6 +116,21 @@ def coord_transform(z, params):
     return complex(xnew, ynew)
 
 
+def graph_point_params_and_mse(point_params, iters, costs):
+    import matplotlib.pyplot as plt
+    import matplotlib.animation as animation
+    fig = plt.figure()
+    ax1 = fig.add_subplot(2,1,1)
+    ax2 = fig.add_subplot(2,1,2)
+    def animate(i):
+        ax1.clear()
+        ax1.hist(point_params, bins=1000)
+        ax2.clear()
+        ax2.plot(iters, costs)
+        plt.draw()
+    ani = animation.FuncAnimation(fig, animate, interval=100)
+    plt.show()
+
 def points_on_path(path, params):
     """Figure out how many points are necessary and return those.
 
@@ -156,6 +172,21 @@ def points_on_path(path, params):
         gradient /= num_segments * ( ds ** 2 )
 
         return gradient
+    
+    def get_graph_args():
+        nonlocal point_params, mse
+        shared_point_params = Array("d", point_params)
+        iters = Array("i", [i - 50 for i in range(50)])
+        costs = Array("d", [mse] * 50)
+        return shared_point_params, iters, costs
+
+    def update_graph_args():
+        nonlocal iters, costs, shared_point_params, mse, point_params
+        iters[:-1] = iters[1:]
+        iters[-1] += 1
+        costs[:-1] = costs[1:]
+        costs[-1] = mse
+        shared_point_params[:] = point_params
 
     ds = params['Ds']
     num_segments = int( np.ceil(path.length() / ds) )
@@ -170,6 +201,10 @@ def points_on_path(path, params):
     cur_iter = 0
     step_size = 0.00005
 
+    # shared_point_params, iters, costs = get_graph_args()
+    # p = Process(target=graph_point_params_and_mse, args=(shared_point_params, iters, costs))
+    # p.start()
+
     while np.abs(mse_difference) > 1e-6 and cur_iter < max_iter:
         cur_iter += 1
         print(f"{cur_iter} / {max_iter}. mse={mse}. mse_diff={mse_difference}")
@@ -181,6 +216,8 @@ def points_on_path(path, params):
         new_mse = get_mean_squared_relative_error(segment_lengths, ds)
         mse_difference = mse - new_mse
         mse = new_mse
+    #     update_graph_args()
+    # p.join()
 
     return point_params
 
