@@ -30,6 +30,7 @@ setup(
 
     # dependencies
     install_requires=[
+        "multiprocess >= 0.70.8",
         "opencv-python >= 4.1.0.25",
         "pandas >= 0.15.2",
         "Pmw >= 2.0.1",

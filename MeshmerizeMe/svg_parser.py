@@ -28,7 +28,7 @@ from .geo_obj import Vertex, writeFile
 from . import meshmerizeme_logger as logger
 import re
 import warnings
-from multiprocessing import Process, Array, Value, Manager
+from multiprocess import Process, Array, Value, Manager
 
 ERROR_TOL = 0.10 # Error tolerance: 10% relative error
 
