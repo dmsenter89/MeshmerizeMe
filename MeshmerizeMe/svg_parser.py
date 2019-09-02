@@ -199,24 +199,21 @@ def points_on_path(path, params):
         num_segments = int( np.ceil(path.length(T0=min_t, T1=max_t) / ds) )
         num_points = num_segments + 1        
         should_show_graph = False
-        step_size = 0.000005
+        step_size = 0.0000005
+        max_iter = 500
+        cur_iter = 0
         if point_params is None:
-            curviness = np.abs( path.derivative(max_t) - path.derivative(min_t) )
-            if curviness > 0.2:
-                num_segments -= 2
-                num_points -= 2
             point_params =  np.linspace(min_t, max_t, num_points) #np.sort( np.random.uniform(0, 1, num_points) )
         else:
             should_show_graph = True
             num_points = len(point_params)
             num_segments = num_points - 1
-            step_size *= 10
+            step_size *= 100
+            max_iter = 50
         point_coords = get_point_coords(point_params)
         segment_lengths = get_segment_lengths(point_coords)
         mse = get_mean_squared_relative_error(segment_lengths, ds)
         mse_difference = 1
-        max_iter = 500
-        cur_iter = 0
 
         shared_point_params, iters, costs = get_graph_args()
         p = Process(target=graph_point_params_and_mse, args=(shared_point_params, iters, costs, path, should_show_graph))
@@ -236,7 +233,7 @@ def points_on_path(path, params):
             update_graph_args()
         p.join()
 
-        return point_params
+        return np.unique(point_params)
 
     ds = params['Ds']
     subpath_length = ds*25
@@ -251,7 +248,7 @@ def points_on_path(path, params):
             subpath_index = cur_subpath.value
             cur_subpath.value = subpath_index + 1
             print(f"{subpath_index} / {num_subpaths} subpaths")
-            point_params.extend( get_best_subpath_params(path, ds, min_t=subpath_boundary_points[subpath_index], max_t=subpath_boundary_points[subpath_index+1]) )
+            point_params.extend( get_best_subpath_params(path, ds, min_t=subpath_boundary_points[subpath_index], max_t=subpath_boundary_points[subpath_index+1])[:-1] ) # Remove last point so it is not included twice.
 
     point_params = None
     with Manager() as manager:
