@@ -248,7 +248,10 @@ def points_on_path(path, params):
             subpath_index = cur_subpath.value
             cur_subpath.value = subpath_index + 1
             print(f"{subpath_index} / {num_subpaths} subpaths")
-            point_params.extend( get_best_subpath_params(path, ds, min_t=subpath_boundary_points[subpath_index], max_t=subpath_boundary_points[subpath_index+1])[:-1] ) # Remove last point so it is not included twice.
+            subpath_params = get_best_subpath_params(path, ds, min_t=subpath_boundary_points[subpath_index], max_t=subpath_boundary_points[subpath_index+1])
+            if subpath_index < num_subpaths - 1:
+                subpath_params = subpath_params[:-1] # Remove last point so it is not included twice.
+            point_params.extend( subpath_params ) 
 
     point_params = None
     with Manager() as manager:
