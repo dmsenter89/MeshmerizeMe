@@ -127,14 +127,24 @@ def graph_point_params_and_mse(point_params, iters, costs, path, show_graph=True
     ax3 = fig.add_subplot(3,1,3)
     def animate(i):
         ax1.clear()
+        ax1.set_title("Density of Point Params")
+        ax1.set_xlabel("Point Params T")
+        ax1.set_ylabel("Frequency")
         ax1.hist(point_params, bins=len(point_params)*2)
         ax2.clear()
+        ax2.set_title("MSE of Distances Between Points")
+        ax2.set_xlabel("No. of Gradient Descent Iterations.")
+        ax2.set_ylabel("MSE")
         ax2.plot(iters, costs)
         ax3.clear()
+        ax3.set_title("Points on Path")
+        ax3.set_xlabel("X Coord.")
+        ax3.set_ylabel("Y Coord.")
         coords = [path.point(T) for T in point_params]
         x = [coord.real for coord in coords]
         y = [coord.imag for coord in coords]
         ax3.scatter(x, y)
+        plt.tight_layout()
         plt.draw()
     ani = animation.FuncAnimation(fig, animate, interval=1000)
     plt.show()
@@ -205,7 +215,7 @@ def points_on_path(path, params):
         if point_params is None:
             point_params =  np.linspace(min_t, max_t, num_points) #np.sort( np.random.uniform(0, 1, num_points) )
         else:
-            should_show_graph = True
+            # should_show_graph = True
             num_points = len(point_params)
             num_segments = num_points - 1
             step_size *= 100
