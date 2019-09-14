@@ -231,7 +231,7 @@ def points_on_path(path, params):
 
         while np.abs(mse_difference) > 1e-6 and cur_iter < max_iter:
             cur_iter += 1
-            # print(f"{cur_iter} / {max_iter}. mse={mse}. mse_diff={mse_difference}")
+            # logger.info(f"{cur_iter} / {max_iter}. mse={mse}. mse_diff={mse_difference}")
             mse_gradient = get_mse_gradient(point_params, ds)
             point_params -= step_size * mse_gradient
             point_params = np.clip( point_params , min_t, max_t )
@@ -257,7 +257,7 @@ def points_on_path(path, params):
         while cur_subpath.value < num_subpaths:
             subpath_index = cur_subpath.value
             cur_subpath.value = subpath_index + 1
-            print(f"{subpath_index} / {num_subpaths} subpaths")
+            logger.debug(f"{subpath_index} / {num_subpaths} subpaths")
             subpath_params = get_best_subpath_params(path, ds, min_t=subpath_boundary_points[subpath_index], max_t=subpath_boundary_points[subpath_index+1])
             if subpath_index < num_subpaths - 1:
                 subpath_params = subpath_params[:-1] # Remove last point so it is not included twice.

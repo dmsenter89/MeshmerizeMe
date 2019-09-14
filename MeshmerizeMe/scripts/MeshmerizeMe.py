@@ -131,3 +131,5 @@ def main(args=None):
     else:
         # process the given files one by one
         process_all_files(args)
+
+    logger.shutdown()

@@ -1063,3 +1063,5 @@ def main(args=None):
 
     args = parser.parse_args()
     ContourizeMe(args.image)
+    
+    logger.shutdown()
