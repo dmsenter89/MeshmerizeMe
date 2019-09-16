@@ -240,7 +240,7 @@ class GradientDescentEstimator(PointsEstimator):
             self.point_params = self.point_params[:self.num_points]
         elif len(self.point_params) < self.num_points: # Too few points
             num_new_points = self.num_points - len(self.point_params)
-            self.point_params.extend( np.random.uniform(0, 1, num_new_points) )
+            self.point_params.extend( np.random.uniform(self.min_T, self.max_T, num_new_points) )
             self.point_params.sort()
         self.point_params = np.asarray(self.point_params)
         self.point_params = self.fit_subpath()
