@@ -42,15 +42,17 @@ Call the `MeshmerizeMe` script to mesh the resulting SVG files.
 ```
 usage: MeshmerizeMe [-h] [-i | -p] [--subpath-length SUBPATH_LENGTH]
                     [--num-points NUM_POINTS] [--learning-rate LEARNING_RATE]
-                    [--max-iter MAX_ITER] [--threshold THRESHOLD]                                                                                                      [--show-graph]                                                                                                                                     [--num-parallel-processes NUM_PARALLEL_PROCESSES]
+                    [--max-iter MAX_ITER] [--threshold THRESHOLD]
+                    [--show-graph]
+                    [--num-parallel-processes NUM_PARALLEL_PROCESSES]
                     [fname [fname ...]]
 
-Welcome to MeshmerizeMe. MeshmerizeMe is a Python script intended to assist                                                                                                                                                                                                   
-with creating geometries for fluid simulations using IBAMR and IB2d. It uses a                                                                                                                                                                                                
-user-supplied SVG file and input2d file to create .vertex files, and can plot
-the same. MeshmerizeMe uses the 'gradient descent' algorithm to minimize the
-relative error of distances between points. First, the path is split into
-multiple segments which are estimated in parallel. Then, the resulting points
+Welcome to MeshmerizeMe. MeshmerizeMe is a Python script intended to assist 
+with creating geometries for fluid simulations using IBAMR and IB2d. It uses a 
+user-supplied SVG file and input2d file to create .vertex files, and can plot 
+the same. MeshmerizeMe uses the 'gradient descent' algorithm to minimize the 
+relative error of distances between points. First, the path is split into 
+multiple segments which are estimated in parallel. Then, the resulting points 
 are used as initial estimates for the final aggregate minimization.
 
 positional arguments:
