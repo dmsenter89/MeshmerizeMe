@@ -9,6 +9,22 @@ from multiprocess import Process, Array, Value, Manager
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+# Default config settings which users can override via CLI arguments.
+USER_CONFIG = {
+    "path" : None,
+    "ds" : None,
+    "min_T" : 0,
+    "max_T" : 1,
+    "point_params" : None,
+    "subpath_length" : 25,
+    "num_points" : None,
+    "learning_rate" : 0.00005,
+    "max_iter" : 50,
+    "threshold" : 1e-6,
+    "show_graph" : False,
+    "num_parallel_processes" : 10
+}
+
 def get_point_coords(path, point_params):
     return np.asarray([ path.point(T) for T in point_params ])
 
@@ -53,7 +69,7 @@ def graph_point_params_and_mse(args):
 
 class PointsEstimator():
     """Finds estimates for equally spaced points on an SVG path."""
-    def __init__(self, path, ds, min_T=0, max_T=1):
+    def __init__(self, config=USER_CONFIG):
         """
         Args:
             path: An svgpathtools Path object.
@@ -61,10 +77,10 @@ class PointsEstimator():
             min_T: Parameter 0<=T<=1 for the starting point of a segment on the path.
             max_T: Parameter 0<=T<=1 for the ending point of a segment on the path.
         """
-        self.path = path
-        self.ds = ds
-        self.min_T = min_T
-        self.max_T = max_T
+        self.path = config["path"]
+        self.ds = config["ds"]
+        self.min_T = config["min_T"]
+        self.max_T = config["max_T"]
 
 class GradientDescentEstimator(PointsEstimator):
     """
@@ -72,15 +88,7 @@ class GradientDescentEstimator(PointsEstimator):
     First, the path is split into multiple segments which are estimated in parallel.
     Then, the resulting points are used as initial estimates for the final aggregate minimization.    
     """
-    def __init__(self, path, ds, min_T=0, max_T=1,
-                    point_params=None,
-                    subpath_length=25,
-                    num_points=None,
-                    learning_rate=0.00005,
-                    max_iter=50,
-                    threshold=1e-6,
-                    show_graph=False,
-                    num_parallel_processes=10):
+    def __init__(self, config=USER_CONFIG):
         """
         Args: (See also the PointsEstimator class)
             point_params: T parameters for initial estimates of points.
@@ -99,28 +107,28 @@ class GradientDescentEstimator(PointsEstimator):
                             -Plot of the estimated points.
             num_parallel_processes: Number of processes to estimate subpaths in parallel.
         """
-        super().__init__(path, ds, min_T, max_T)
-        self.subpath_length = subpath_length * ds
-        self.learning_rate = learning_rate
-        self.max_iter = max_iter
-        self.threshold = threshold
-        self.show_graph = show_graph
-        self.num_parallel_processes = num_parallel_processes
-        self.num_subpaths = int( path.length() / self.subpath_length )
+        super().__init__(config)
+        self.subpath_length = config["subpath_length"] * self.ds
+        self.learning_rate = config["learning_rate"]
+        self.max_iter = config["max_iter"]
+        self.threshold = config["threshold"]
+        self.show_graph = config["show_graph"]
+        self.num_parallel_processes = config["num_parallel_processes"]
+        self.num_subpaths = int( self.path.length() / self.subpath_length )
         
-        if num_points is not None:
-            self.num_points = num_points
-            self.num_segments = num_points - 1
-            self.point_params = np.linspace(min_T, max_T, num_points)                
+        if config["num_points"] is not None:
+            self.num_points = config["num_points"]
+            self.num_segments = self.num_points - 1
+            self.point_params = np.linspace(self.min_T, self.max_T, self.num_points)                
         else:
-            if point_params is not None:
-                self.num_points = len(point_params)
+            if config["point_params"] is not None:
+                self.num_points = len(config["point_params"])
                 self.num_segments = self.num_points - 1
-                self.point_params = point_params
+                self.point_params = config["point_params"]
             else:
-                self.num_segments = int( np.ceil( path.length(T0=min_T, T1=max_T) / ds ) )
+                self.num_segments = int( np.ceil( self.path.length(T0=self.min_T, T1=self.max_T) / self.ds ) )
                 self.num_points = self.num_segments + 1
-                self.point_params = np.linspace(min_T, max_T, self.num_points)                
+                self.point_params = np.linspace(self.min_T, self.max_T, self.num_points)                
 
 
     def get_mse_gradient(self):
@@ -184,6 +192,7 @@ class GradientDescentEstimator(PointsEstimator):
             mse = new_mse
             self.update_graph_args(new_mse)
         p.join()
+        p.terminate()
 
         return np.unique(self.point_params)
 
@@ -191,13 +200,17 @@ class GradientDescentEstimator(PointsEstimator):
         while cur_subpath.value < self.num_subpaths:
             subpath_index = cur_subpath.value
             cur_subpath.value = subpath_index + 1
-            logger.info(f"{subpath_index} / {self.num_subpaths} subpaths")
-            
-            subpath_estimator = GradientDescentEstimator(self.path, self.ds,
-                                    min_T=self.subpath_boundary_points[subpath_index],
-                                    max_T=self.subpath_boundary_points[subpath_index+1],
-                                    learning_rate=0.0000005,
-                                    max_iter=500)
+            logger.debug(f"{subpath_index} / {self.num_subpaths} subpaths")
+
+            subpath_estimator_config = USER_CONFIG.copy()
+            subpath_estimator_config["min_T"] = self.subpath_boundary_points[subpath_index]
+            subpath_estimator_config["max_T"] = self.subpath_boundary_points[subpath_index+1]
+            subpath_estimator_config["num_points"] = None
+            subpath_estimator_config["show_graph"] = False
+            subpath_estimator_config["learning_rate"] = 0.0000005
+            subpath_estimator_config["max_iter"] = 500
+
+            subpath_estimator = GradientDescentEstimator(subpath_estimator_config)
             subpath_params = subpath_estimator.fit_subpath()
             if subpath_index < self.num_subpaths - 1:
                 subpath_params = subpath_params[:-1] # Remove last point so it is not included twice.
@@ -219,10 +232,17 @@ class GradientDescentEstimator(PointsEstimator):
                 p.start()
             for p in parallel_processes:
                 p.join()
+            for p in parallel_processes:
+                p.terminate()
             self.point_params = shared_point_params[:]
         self.point_params.sort()
         if len(self.point_params) > self.num_points: # Too many points
             self.point_params = self.point_params[:self.num_points]
+        elif len(self.point_params) < self.num_points: # Too few points
+            num_new_points = self.num_points - len(self.point_params)
+            self.point_params.extend( np.random.uniform(0, 1, num_new_points) )
+            self.point_params.sort()
+        self.point_params = np.asarray(self.point_params)
         self.point_params = self.fit_subpath()
 
         return self.point_params

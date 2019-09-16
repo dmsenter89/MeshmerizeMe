@@ -131,7 +131,9 @@ def points_on_path(path, params):
 
 
     ds = params['Ds']
-    points_estimator = points_estimation.GradientDescentEstimator(path=path, ds=ds)
+    points_estimation.USER_CONFIG["path"] = path
+    points_estimation.USER_CONFIG["ds"] = ds
+    points_estimator = points_estimation.GradientDescentEstimator()
     point_params = points_estimator.fit_path()
     return point_params
 
