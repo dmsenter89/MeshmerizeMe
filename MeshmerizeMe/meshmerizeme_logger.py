@@ -21,8 +21,9 @@ console_stream_handler = logging.StreamHandler(sys.stdout)
 console_stream_handler.setLevel(logging.INFO)
 console_stream_handler.setFormatter(formatter)
 console_stream_handler.addFilter(LevelFilter(10,20)) # 10 = DEBUG, 20 = INFO
-console_memory_handler = logging.handlers.MemoryHandler(capacity=1000, target=console_stream_handler) # Flush the logs after every 1000 records.
-logger.addHandler(console_memory_handler)
+# console_memory_handler = logging.handlers.MemoryHandler(capacity=1000, target=console_stream_handler) # Flush the logs after every 1000 records.
+# logger.addHandler(console_memory_handler)
+logger.addHandler(console_stream_handler)
 
 file_handler = None
 

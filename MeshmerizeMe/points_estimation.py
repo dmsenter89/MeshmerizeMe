@@ -5,6 +5,8 @@ import svgpathtools
 from numpy import linspace
 import numpy as np
 from . import meshmerizeme_logger as logger
+from tqdm import tqdm
+import time
 from multiprocess import Process, Array, Value, Manager
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -221,11 +223,10 @@ class GradientDescentEstimator(PointsEstimator):
 
         return np.unique(self.point_params)
 
-    def fit_subpaths_in_parallel(self, cur_subpath, point_params):        
-        while cur_subpath.value < self.num_subpaths:
-            subpath_index = cur_subpath.value
-            cur_subpath.value = subpath_index + 1
-            logger.debug(f"{subpath_index} / {self.num_subpaths} subpaths")
+    def fit_subpaths_in_parallel(self, cur_subpath_index, point_params):        
+        while cur_subpath_index.value < self.num_subpaths:
+            subpath_index = cur_subpath_index.value
+            cur_subpath_index.value = subpath_index + 1
 
             subpath_estimator_config = USER_CONFIG.copy()
             subpath_estimator_config["min_T"] = self.subpath_boundary_points[subpath_index]
@@ -241,6 +242,17 @@ class GradientDescentEstimator(PointsEstimator):
                 subpath_params = subpath_params[:-1] # Remove last point so it is not included twice.
             point_params.extend( subpath_params ) 
 
+    def log_subpath_progress(self, cur_subpath_index):
+        last_logged_subpath_index = 0
+        next_subpath_index_to_log = cur_subpath_index.value
+        with tqdm(total=self.num_subpaths, desc="Subpaths") as progress_bar:
+            while next_subpath_index_to_log < self.num_subpaths and last_logged_subpath_index < self.num_subpaths:
+                progress_bar.update(next_subpath_index_to_log - last_logged_subpath_index)
+                last_logged_subpath_index = next_subpath_index_to_log
+                next_subpath_index_to_log = cur_subpath_index.value
+                time.sleep(0.1)
+            progress_bar.update(self.num_subpaths - last_logged_subpath_index)
+    
     def fit_path(self):
         self.subpath_boundary_points = [0]
         for i in range(self.num_subpaths-1):
@@ -248,13 +260,16 @@ class GradientDescentEstimator(PointsEstimator):
         self.subpath_boundary_points.append(1)
 
         with Manager() as manager:
-            cur_subpath = Value("i", 0)
+            cur_subpath_index = Value("i", 0)
             shared_point_params = manager.list()
             parallel_processes = []
             for i in range(self.num_parallel_processes):
-                p = Process(target=self.fit_subpaths_in_parallel, args=(cur_subpath, shared_point_params))
+                p = Process(target=self.fit_subpaths_in_parallel, args=(cur_subpath_index, shared_point_params))
                 parallel_processes.append(p)
                 p.start()
+            progress_bar_process = Process(target=self.log_subpath_progress, args=(cur_subpath_index,))
+            parallel_processes.append(progress_bar_process)
+            progress_bar_process.start()
             for p in parallel_processes:
                 p.join()
             for p in parallel_processes:

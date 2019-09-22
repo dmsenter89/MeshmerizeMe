@@ -19,7 +19,6 @@ ISSUES:
 """
 
 import xml.etree.ElementTree as ET
-from tqdm import tqdm
 from svgpathtools import parse_path
 import svgpathtools
 from numpy import linspace
@@ -171,7 +170,7 @@ def make_vertices(path_list, params):
     segments = []
     A = transform_matrix(params) # Create point transform to target space
 
-    for path in tqdm(path_list):
+    for path in path_list:
         path_as_svgpathtools_path = parse_path( path.get('d') )
         path_as_svgpathtools_path = transform( path_as_svgpathtools_path, path.get_aggregate_transform_matrix() )
 
