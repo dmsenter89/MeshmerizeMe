@@ -82,7 +82,7 @@ def graph_point_params_and_mse(args):
 
         ax2_artist.set_data(args["iters"], args["costs"])
         ax2.relim()
-        ax2.autoscale_view()
+        ax2.autoscale()
 
         point_coords = get_point_coords( args["path"], args["point_params"] )
         ax3_artist.set_offsets(point_coords)
