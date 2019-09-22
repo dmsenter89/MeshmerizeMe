@@ -35,32 +35,57 @@ def get_mean_squared_relative_error(segment_lengths, ds):
     return np.mean( np.square( (segment_lengths - ds) / ds ) )
 
 def graph_point_params_and_mse(args):
+    def get_point_coords(path, point_params):
+        coords = [ path.point(T) for T in point_params ]
+        x = [coord.real for coord in coords]
+        y = [coord.imag for coord in coords]
+        coords = [ (x[i], y[i]) for i in range(len(coords)) ]
+        return coords
+
     if args["show_graph"] is False:
         return
     fig = plt.figure()
+    
     ax1 = fig.add_subplot(3,1,1)
+    num_bins = len( args["point_params"] ) * 2
+    ax1.set_title("Density of Point Params")
+    ax1.set_xlabel("Point Params T")
+    ax1.set_ylabel("Frequency")
+    hist, bins = np.histogram( args["point_params"], bins=num_bins )
+    ax1_artist = ax1.bar(bins[:-1], hist, width=np.ptp(args["point_params"]) / num_bins )
+    
     ax2 = fig.add_subplot(3,1,2)
+    ax2.set_title("MSE of Distances Between Points")
+    ax2.set_xlabel("No. of Gradient Descent Iterations.")
+    ax2.set_ylabel("MSE")
+    ax2_artist = ax2.plot(args["iters"], args["costs"])[0]
+
     ax3 = fig.add_subplot(3,1,3)
+    ax3.set_title("Points on Path")
+    ax3.set_xlabel("X Coord.")
+    ax3.set_ylabel("Y Coord.")
+    point_coords = get_point_coords( args["path"], args["point_params"] )
+    x = [ point_coord[0] for point_coord in point_coords ]
+    y = [ point_coord[1] for point_coord in point_coords ]
+    ax3_artist = ax3.scatter(x, y)
+    
+    plt.tight_layout()
+
     def animate(i):
-        ax1.clear()
-        ax1.set_title("Density of Point Params")
-        ax1.set_xlabel("Point Params T")
-        ax1.set_ylabel("Frequency")
-        ax1.hist( args["point_params"], bins=len( args["point_params"] ) * 2 )
-        ax2.clear()
-        ax2.set_title("MSE of Distances Between Points")
-        ax2.set_xlabel("No. of Gradient Descent Iterations.")
-        ax2.set_ylabel("MSE")
-        ax2.plot(args["iters"], args["costs"])
-        ax3.clear()
-        ax3.set_title("Points on Path")
-        ax3.set_xlabel("X Coord.")
-        ax3.set_ylabel("Y Coord.")
-        coords = [ args["path"].point(T) for T in args["point_params"] ]
-        x = [coord.real for coord in coords]
-        y = [coord.imag for coord in coords]
-        ax3.scatter(x, y)
-        plt.tight_layout()
+        hist, bins = np.histogram( args["point_params"], bins=num_bins )
+        [bar.set_height(hist[i]) for i, bar in enumerate(ax1_artist)]        
+        [bar.set_x(bins[i]) for i, bar in enumerate(ax1_artist)]
+        ax1.relim()
+        ax1.autoscale_view()
+
+        ax2_artist.set_data(args["iters"], args["costs"])
+        ax2.relim()
+        ax2.autoscale_view()
+
+        point_coords = get_point_coords( args["path"], args["point_params"] )
+        ax3_artist.set_offsets(point_coords)
+        ax3.autoscale_view()
+
         plt.draw()
     ani = animation.FuncAnimation(fig, animate, interval=1000)
     plt.show()
