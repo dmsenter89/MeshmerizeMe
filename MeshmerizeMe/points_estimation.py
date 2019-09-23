@@ -223,12 +223,12 @@ class GradientDescentEstimator(PointsEstimator):
 
         return np.unique(self.point_params)
 
-    def fit_subpaths_in_parallel(self, cur_subpath_index, point_params):        
+    def fit_subpaths_in_parallel(self, cur_subpath_index, point_params, config):        
         while cur_subpath_index.value < self.num_subpaths:
             subpath_index = cur_subpath_index.value
             cur_subpath_index.value = subpath_index + 1
 
-            subpath_estimator_config = USER_CONFIG.copy()
+            subpath_estimator_config = config
             subpath_estimator_config["min_T"] = self.subpath_boundary_points[subpath_index]
             subpath_estimator_config["max_T"] = self.subpath_boundary_points[subpath_index+1]
             subpath_estimator_config["num_points"] = None
@@ -264,7 +264,7 @@ class GradientDescentEstimator(PointsEstimator):
             shared_point_params = manager.list()
             parallel_processes = []
             for i in range(self.num_parallel_processes):
-                p = Process(target=self.fit_subpaths_in_parallel, args=(cur_subpath_index, shared_point_params))
+                p = Process(target=self.fit_subpaths_in_parallel, args=(cur_subpath_index, shared_point_params, USER_CONFIG.copy()))
                 parallel_processes.append(p)
                 p.start()
             progress_bar_process = Process(target=self.log_subpath_progress, args=(cur_subpath_index,))
