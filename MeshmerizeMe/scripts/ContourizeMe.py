@@ -604,7 +604,7 @@ class ContourizeMe(object):
         self.pp = 15.
 
         # Boolean for writing and visualizing estimated diameters
-        self.write_diameters = True
+        self.write_diameters = False
 
         # Lower bound for the percetile of accelerations to be considered for diameter calculation
         self.percentile = 100.
@@ -1017,10 +1017,11 @@ class ContourizeMe(object):
 
                 pickle.dump(ofile, open('{0}.pkl'.format(filename), 'wb'))
 
-                dataf = pd.DataFrame(dataf)
-                dataf.to_csv(filename + '-diameters.csv', index = False)
+                if self.write_diameters:
+                    dataf = pd.DataFrame(dataf)
+                    dataf.to_csv(filename + '-diameters.csv', index = False)
 
-                plt.savefig(filename + '-diameters.png', dpi = 100)
+                    plt.savefig(filename + '-diameters.png', dpi = 100)
                 logger.info('Done!')
 
     def update_info(self):
