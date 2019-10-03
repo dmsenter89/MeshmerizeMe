@@ -33,6 +33,7 @@ from scipy.spatial import KDTree
 import pandas as pd
 from scipy.interpolate import UnivariateSpline
 from MeshmerizeMe import get_diameters, Chanvese, Contours
+from MeshmerizeMe.tools import *
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.backend_bases import MouseEvent
@@ -652,6 +653,9 @@ class ContourizeMe(object):
         # to display
         self.mim = cv2.cvtColor(copy.copy(self.im), cv2.COLOR_BGR2RGB)
 
+        # Get HSV paramaterization
+        self.hsv_im = cv2.cvtColor(copy.copy(self.im), cv2.COLOR_BGR2HSV)
+
         ret, thresh = cv2.threshold(self.imgray, 127, 255, 0)
         _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -916,7 +920,9 @@ class ContourizeMe(object):
         if plot:
             logger.info('Plotting...')
 
-            for b in beziers:
+            plt.gca().invert_yaxis()
+
+            for b in self.beziers:
                 t = np.linspace(0., 1., 6)
                 xy = np.array([cubic_smooth_bezier(b, u) for u in t])
 
@@ -963,7 +969,7 @@ class ContourizeMe(object):
             except:
                 filename = tkinter.filedialog.asksaveasfilename()
 
-            if filename != '':
+            if type(filename) == str and filename != '':
                 self.plot_beziers(plot = False)
 
                 mask = np.zeros(self.imgray.shape)
@@ -1009,7 +1015,7 @@ class ContourizeMe(object):
                 else:
                     ofile = Contours(self.contours, self.beziers, self.info)
 
-                pickle.dump(ofile, open('{0}.pkl'.format(filename), 'w'))
+                pickle.dump(ofile, open('{0}.pkl'.format(filename), 'wb'))
 
                 dataf = pd.DataFrame(dataf)
                 dataf.to_csv(filename + '-diameters.csv', index = False)
