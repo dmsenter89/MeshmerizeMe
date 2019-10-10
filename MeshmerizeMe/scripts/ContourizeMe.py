@@ -704,7 +704,8 @@ class ContourizeMe(object):
 
         self.root.protocol('WM_DELETE_WINDOW', self.quit_all)
 
-        Label(self.root, text = 'Gray / Red / Hue').grid(row = 6, column = 0, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
+        self.left_label = Label(self.root, text = 'Gray Bounds (U/L)')
+        self.left_label.grid(row = 6, column = 0, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
         self.w1 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
         self.w1.set(0)
         self.w1.grid(row = 0, column = 0, padx = 10, pady = 5, sticky = 'NS', rowspan = 6)
@@ -712,7 +713,8 @@ class ContourizeMe(object):
         self.w2.set(255)
         self.w2.grid(row = 0, column = 1,  padx = 10, pady = 5, sticky = 'NS', rowspan = 6)
 
-        Label(self.root, text = 'Green / Saturation').grid(row = 6, column = 2, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
+        self.mid_label = Label(self.root, text = '(Inactive)')
+        self.mid_label.grid(row = 6, column = 2, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
         self.w5 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
         self.w5.set(0)
         self.w5.grid(row = 0, column = 2, padx = 10, pady = 5,  sticky = 'NS', rowspan = 6)
@@ -720,7 +722,8 @@ class ContourizeMe(object):
         self.w6.set(255)
         self.w6.grid(row = 0, column = 3,  padx = 10, pady = 5,  sticky = 'NS', rowspan = 6)
 
-        Label(self.root, text = 'Blue / Value').grid(row = 6, column = 4, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
+        self.right_label = Label(self.root, text = '(Inactive)')
+        self.right_label.grid(row = 6, column = 4, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
         self.w7 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
         self.w7.set(0)
         self.w7.grid(row = 0, column = 4, padx = 10, pady = 5,  sticky = 'NS', rowspan = 6)
@@ -797,10 +800,20 @@ class ContourizeMe(object):
 
     def get_tothresh(self):
         if self.pamVar.get() == 'Grayscale':
+            self.left_label.config(text="Gray Bounds (U/L)")
+            self.mid_label.config(text="(Inactive)")
+            self.right_label.config(text="(Inactive)")
             return self.transformer.transform(self.imgray)
         elif self.pamVar.get() == 'RGB':
+            self.left_label.config(text="Red Bounds (U/L)")
+            self.mid_label.config(text="Green Bounds (U/L)")
+            self.right_label.config(text="Blue Bounds (U/L)")
             return self.transformer.transform(self.im)
         elif self.pamVar.get() == 'HSV':
+            #self.left_label.config(text="Hue Bounds")
+            self.left_label.config(text="Hue (U/L)")
+            self.mid_label.config(text="Saturation (U/L)")
+            self.right_label.config(text="Value (U/L)")
             return self.transformer.transform(self.hsv_im)
 
 
