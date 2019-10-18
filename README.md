@@ -40,21 +40,56 @@ optional arguments:
 Call the `MeshmerizeMe` script to mesh the resulting SVG files.
 
 ```
-usage: MeshmerizeMe [-h] [-i | -p] [fname [fname ...]]
+usage: MeshmerizeMe [-h] [-i | -p] [--subpath-length SUBPATH_LENGTH]
+                    [--num-points NUM_POINTS] [--learning-rate LEARNING_RATE]
+                    [--max-iter MAX_ITER] [--threshold THRESHOLD]
+                    [--show-graph]
+                    [--num-parallel-processes NUM_PARALLEL_PROCESSES]
+                    [fname [fname ...]]
 
-Welcome to MeshmerizeMe. MeshmerizeMe is a Python script intended to assist
-with creating geometries for fluid simulations using IBAMR and IB2d. It uses a
-user-supplied SVG file and input2d file to create .vertex files, and can plot
-the same.
+Welcome to MeshmerizeMe. MeshmerizeMe is a Python script intended to assist 
+with creating geometries for fluid simulations using IBAMR and IB2d. It uses a 
+user-supplied SVG file and input2d file to create .vertex files, and can plot 
+the same. MeshmerizeMe uses the 'gradient descent' algorithm to minimize the 
+relative error of distances between points. First, the path is split into 
+multiple segments which are estimated in parallel. Then, the resulting points 
+are used as initial estimates for the final aggregate minimization.
 
 positional arguments:
-  fname             Path to file(s) for processing. If omitted, program will
-                    run in batch-processing mode.
+  fname                 Path to file(s) for processing. If omitted, program
+                        will run in batch-processing mode. (default: None)
 
 optional arguments:
-  -h, --help        show this help message and exit
-  -i, --input-file  Mesh SVG file(s). Default option. Exclusive with plot.
-  -p, --plot        Plot existing .vertex file(s). Exclusive with input-file.
+  -h, --help            show this help message and exit
+  -i, --input-file      Mesh SVG file(s). Default option. Exclusive with plot.
+                        (default: True)
+  -p, --plot            Plot existing .vertex file(s). Exclusive with input-
+                        file. (default: False)
+  --subpath-length SUBPATH_LENGTH
+                        Length of subpaths to estimate in parallel in terms of
+                        ds. (default: 25)
+  --num-points NUM_POINTS
+                        Number of points to fit to the path. Leave this blank
+                        to let the script automatically determine a value.
+                        (default: None)
+  --learning-rate LEARNING_RATE
+                        The learning rate used by the gradient descent
+                        algorithm for the final aggregate minimization over
+                        the entire path. (default: 5e-05)
+  --max-iter MAX_ITER   Maximum number of gradient descent iterations for the
+                        final aggregate minimization over the entire path.
+                        (default: 50)
+  --threshold THRESHOLD
+                        Stop the gradient descent process if the mean squared
+                        error of point distances converges within the
+                        threshold. (default: 1e-06)
+  --show-graph          Flag to display/hide real-time graphs (for the final
+                        aggregate minimization) containing: Histogram of point
+                        parameters T; Mean squared error of point distances;
+                        Plot of the estimated points. (default: False)
+  --num-parallel-processes NUM_PARALLEL_PROCESSES
+                        Number of processes to estimate subpaths in parallel.
+                        (default: 10)
 
 Note that the file argument is optional. If no file is specified on the
 commandline the program will start in batch mode. If the user supplies the

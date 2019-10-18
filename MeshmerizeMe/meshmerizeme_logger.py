@@ -1,4 +1,6 @@
 import logging
+import logging.handlers
+import sys
 
 class LevelFilter(logging.Filter):
     def __init__(self, low, high):
@@ -15,11 +17,13 @@ logger.setLevel(logging.INFO)
 
 formatter = logging.Formatter("%(levelname)-8s | %(message)s")
 
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(formatter)
-console_handler.addFilter(LevelFilter(10,20)) # 10 = DEBUG, 20 = INFO
-logger.addHandler(console_handler)
+console_stream_handler = logging.StreamHandler(sys.stdout)
+console_stream_handler.setLevel(logging.INFO)
+console_stream_handler.setFormatter(formatter)
+console_stream_handler.addFilter(LevelFilter(10,20)) # 10 = DEBUG, 20 = INFO
+# console_memory_handler = logging.handlers.MemoryHandler(capacity=1000, target=console_stream_handler) # Flush the logs after every 1000 records.
+# logger.addHandler(console_memory_handler)
+logger.addHandler(console_stream_handler)
 
 file_handler = None
 
@@ -28,7 +32,8 @@ def init_file_handler(full_file_name_without_exention):
     file_handler = logging.FileHandler(fileName, mode="w")
     file_handler.setLevel(logging.WARNING)
     file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+    file_memory_handler = logging.handlers.MemoryHandler(capacity=1000, target=file_handler) # Flush the logs after every 1000 records.
+    logger.addHandler(file_memory_handler)
 
 def debug(message):
     logger.debug(message)
@@ -44,3 +49,6 @@ def error(message):
 
 def critical(message):
     logger.critical(message)
+
+def shutdown():
+    logging.shutdown()

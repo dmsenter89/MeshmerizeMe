@@ -19,13 +19,13 @@ ISSUES:
 """
 
 import xml.etree.ElementTree as ET
-from tqdm import tqdm
 from svgpathtools import parse_path
 import svgpathtools
 from numpy import linspace
 import numpy as np
 from .geo_obj import Vertex, writeFile
 from . import meshmerizeme_logger as logger
+from . import points_estimation
 import re
 import warnings
 from multiprocess import Process, Array, Value, Manager
@@ -116,39 +116,6 @@ def coord_transform(z, params):
     return complex(xnew, ynew)
 
 
-def graph_point_params_and_mse(point_params, iters, costs, path, show_graph=True):
-    if show_graph is False:
-        return
-    import matplotlib.pyplot as plt
-    import matplotlib.animation as animation
-    fig = plt.figure()
-    ax1 = fig.add_subplot(3,1,1)
-    ax2 = fig.add_subplot(3,1,2)
-    ax3 = fig.add_subplot(3,1,3)
-    def animate(i):
-        ax1.clear()
-        ax1.set_title("Density of Point Params")
-        ax1.set_xlabel("Point Params T")
-        ax1.set_ylabel("Frequency")
-        ax1.hist(point_params, bins=len(point_params)*2)
-        ax2.clear()
-        ax2.set_title("MSE of Distances Between Points")
-        ax2.set_xlabel("No. of Gradient Descent Iterations.")
-        ax2.set_ylabel("MSE")
-        ax2.plot(iters, costs)
-        ax3.clear()
-        ax3.set_title("Points on Path")
-        ax3.set_xlabel("X Coord.")
-        ax3.set_ylabel("Y Coord.")
-        coords = [path.point(T) for T in point_params]
-        x = [coord.real for coord in coords]
-        y = [coord.imag for coord in coords]
-        ax3.scatter(x, y)
-        plt.tight_layout()
-        plt.draw()
-    ani = animation.FuncAnimation(fig, animate, interval=1000)
-    plt.show()
-
 def points_on_path(path, params):
     """Figure out how many points are necessary and return those.
 
@@ -161,124 +128,12 @@ def points_on_path(path, params):
         to dissect path objects at the necessary density.
     """
 
-    def get_point_coords(point_params):
-        return np.asarray([ path.point(T) for T in point_params ])
-
-    def get_segment_lengths(point_coords):
-        return np.abs( point_coords[1:] - point_coords[:-1] )
- 
-    def get_mean_squared_relative_error(segment_lengths, ds):
-        return np.mean( np.square( (segment_lengths - ds) / ds ) )
-
-    def get_mse_gradient(point_params, ds):
-        num_points = len(point_params)
-        num_segments = num_points - 1
-        point_coords = get_point_coords(point_params)
-        segment_lengths = get_segment_lengths(point_coords)
-        segment_vectors = point_coords[1:] - point_coords[:-1]
-        segment_vectors = np.stack((segment_vectors.real, segment_vectors.imag), -1)
-        path_derivatives = np.asarray([ path.derivative(T) for T in point_params ])
-        path_derivatives = np.stack((path_derivatives.real, path_derivatives.imag), -1)
-        gradient = np.zeros(num_points)
-
-        gradient_term_1 = np.clip( (segment_lengths - ds) * np.power(segment_lengths, -1), -99999, 99999)
-        gradient_term_2 = np.asarray([ np.dot( segment_vectors[i], path_derivatives[i+1] ) for i in range(num_segments) ])
-        gradient_term_3 = np.asarray([ np.dot( segment_vectors[i], path_derivatives[i] ) for i in range(num_segments) ])
-
-        gradient[1:] += gradient_term_1 * gradient_term_2
-        gradient[:-1] -= gradient_term_1 * gradient_term_3
-        gradient /= num_segments * ( ds ** 2 )
-
-        return gradient
-    
-    def get_best_subpath_params(path, ds, min_t=0, max_t=1, point_params=None):
-        def get_graph_args():
-            nonlocal point_params, mse
-            shared_point_params = Array("d", point_params)
-            iters = Array("i", [i - 50 for i in range(50)])
-            costs = Array("d", [mse] * 50)
-            return shared_point_params, iters, costs
-
-        def update_graph_args():
-            nonlocal iters, costs, shared_point_params, mse, point_params
-            iters[:-1] = iters[1:]
-            iters[-1] += 1
-            costs[:-1] = costs[1:]
-            costs[-1] = mse
-            shared_point_params[:] = point_params
-        num_segments = int( np.ceil(path.length(T0=min_t, T1=max_t) / ds) )
-        num_points = num_segments + 1        
-        should_show_graph = False
-        step_size = 0.0000005
-        max_iter = 500
-        cur_iter = 0
-        if point_params is None:
-            point_params =  np.linspace(min_t, max_t, num_points) #np.sort( np.random.uniform(0, 1, num_points) )
-        else:
-            # should_show_graph = True
-            num_points = len(point_params)
-            num_segments = num_points - 1
-            step_size *= 100
-            max_iter = 50
-        point_coords = get_point_coords(point_params)
-        segment_lengths = get_segment_lengths(point_coords)
-        mse = get_mean_squared_relative_error(segment_lengths, ds)
-        mse_difference = 1
-
-        shared_point_params, iters, costs = get_graph_args()
-        p = Process(target=graph_point_params_and_mse, args=(shared_point_params, iters, costs, path, should_show_graph))
-        p.start()
-
-        while np.abs(mse_difference) > 1e-6 and cur_iter < max_iter:
-            cur_iter += 1
-            # print(f"{cur_iter} / {max_iter}. mse={mse}. mse_diff={mse_difference}")
-            mse_gradient = get_mse_gradient(point_params, ds)
-            point_params -= step_size * mse_gradient
-            point_params = np.clip( point_params , min_t, max_t )
-            point_coords = get_point_coords(point_params)
-            segment_lengths = get_segment_lengths(point_coords)
-            new_mse = get_mean_squared_relative_error(segment_lengths, ds)
-            mse_difference = mse - new_mse
-            mse = new_mse
-            update_graph_args()
-        p.join()
-
-        return np.unique(point_params)
 
     ds = params['Ds']
-    subpath_length = ds*25
-    num_subpaths = int( path.length() / subpath_length ) 
-    subpath_boundary_points = [0]
-    for i in range(num_subpaths-1):
-        subpath_boundary_points.append( path.ilength((i+1) * subpath_length) )
-    subpath_boundary_points.append(1)
-
-    def get_best_subpath_params_in_parallel(cur_subpath, point_params):        
-        while cur_subpath.value < num_subpaths:
-            subpath_index = cur_subpath.value
-            cur_subpath.value = subpath_index + 1
-            print(f"{subpath_index} / {num_subpaths} subpaths")
-            subpath_params = get_best_subpath_params(path, ds, min_t=subpath_boundary_points[subpath_index], max_t=subpath_boundary_points[subpath_index+1])
-            if subpath_index < num_subpaths - 1:
-                subpath_params = subpath_params[:-1] # Remove last point so it is not included twice.
-            point_params.extend( subpath_params ) 
-
-    point_params = None
-    with Manager() as manager:
-        cur_subpath = Value("i", 0)
-        shared_point_params = manager.list()
-        num_parallel_processes = 10
-        parallel_processes = []
-        for i in range(num_parallel_processes):
-            p = Process(target=get_best_subpath_params_in_parallel, args=(cur_subpath, shared_point_params))
-            parallel_processes.append(p)
-            p.start()
-        for p in parallel_processes:
-            p.join()
-        point_params = shared_point_params[:]
-    point_params.sort()
-    point_params = get_best_subpath_params(path, ds, point_params=point_params)
-
+    points_estimation.USER_CONFIG["path"] = path
+    points_estimation.USER_CONFIG["ds"] = ds
+    points_estimator = points_estimation.GradientDescentEstimator()
+    point_params = points_estimator.fit_path()
     return point_params
 
 
@@ -315,7 +170,7 @@ def make_vertices(path_list, params):
     segments = []
     A = transform_matrix(params) # Create point transform to target space
 
-    for path in tqdm(path_list):
+    for path in path_list:
         path_as_svgpathtools_path = parse_path( path.get('d') )
         path_as_svgpathtools_path = transform( path_as_svgpathtools_path, path.get_aggregate_transform_matrix() )
 

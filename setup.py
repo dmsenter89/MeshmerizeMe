@@ -30,6 +30,7 @@ setup(
 
     # dependencies
     install_requires=[
+        "matplotlib >= 3.1.1",
         "multiprocess >= 0.70.8",
         "opencv-python >= 4.1.0.25",
         "pandas >= 0.15.2",
