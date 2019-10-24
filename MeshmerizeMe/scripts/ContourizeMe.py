@@ -1058,8 +1058,9 @@ def main(args=None):
 
     parser = argparse.ArgumentParser(description="allows the user to slide to a values for 8-bit pixel thresholding")
     parser.add_argument("image", default = "None")
-    parser.add_argument("--movie", default = "None")
-    parser.add_argument("--scale", default = "0.5")
+    # following args seem deprecated, slated for removal.
+    # parser.add_argument("--movie", default = "None")
+    # parser.add_argument("--scale", default = "0.5")
 
     args = parser.parse_args()
     ContourizeMe(args.image)
