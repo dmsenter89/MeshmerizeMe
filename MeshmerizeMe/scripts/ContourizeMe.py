@@ -33,6 +33,7 @@ from scipy.spatial import KDTree
 import pandas as pd
 from scipy.interpolate import UnivariateSpline
 from MeshmerizeMe import get_diameters, Chanvese, Contours
+from MeshmerizeMe.tools import *
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.backend_bases import MouseEvent
@@ -603,7 +604,7 @@ class ContourizeMe(object):
         self.pp = 15.
 
         # Boolean for writing and visualizing estimated diameters
-        self.write_diameters = True
+        self.write_diameters = False
 
         # Lower bound for the percetile of accelerations to be considered for diameter calculation
         self.percentile = 100.
@@ -651,6 +652,9 @@ class ContourizeMe(object):
 
         # to display
         self.mim = cv2.cvtColor(copy.copy(self.im), cv2.COLOR_BGR2RGB)
+
+        # Get HSV paramaterization
+        self.hsv_im = cv2.cvtColor(copy.copy(self.im), cv2.COLOR_BGR2HSV)
 
         ret, thresh = cv2.threshold(self.imgray, 127, 255, 0)
         _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -700,7 +704,8 @@ class ContourizeMe(object):
 
         self.root.protocol('WM_DELETE_WINDOW', self.quit_all)
 
-        Label(self.root, text = 'Gray / Red / Hue').grid(row = 6, column = 0, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
+        self.left_label = Label(self.root, text = 'Gray Bounds (U/L)')
+        self.left_label.grid(row = 6, column = 0, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
         self.w1 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
         self.w1.set(0)
         self.w1.grid(row = 0, column = 0, padx = 10, pady = 5, sticky = 'NS', rowspan = 6)
@@ -708,7 +713,8 @@ class ContourizeMe(object):
         self.w2.set(255)
         self.w2.grid(row = 0, column = 1,  padx = 10, pady = 5, sticky = 'NS', rowspan = 6)
 
-        Label(self.root, text = 'Green / Saturation').grid(row = 6, column = 2, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
+        self.mid_label = Label(self.root, text = '(Inactive)')
+        self.mid_label.grid(row = 6, column = 2, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
         self.w5 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
         self.w5.set(0)
         self.w5.grid(row = 0, column = 2, padx = 10, pady = 5,  sticky = 'NS', rowspan = 6)
@@ -716,7 +722,8 @@ class ContourizeMe(object):
         self.w6.set(255)
         self.w6.grid(row = 0, column = 3,  padx = 10, pady = 5,  sticky = 'NS', rowspan = 6)
 
-        Label(self.root, text = 'Blue / Value').grid(row = 6, column = 4, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
+        self.right_label = Label(self.root, text = '(Inactive)')
+        self.right_label.grid(row = 6, column = 4, columnspan = 2, padx = 5, pady = 10, sticky = 'EW')
         self.w7 = Scale(self.root, from_=0, to=255, orient=VERTICAL, command = self.callback, length = 500)
         self.w7.set(0)
         self.w7.grid(row = 0, column = 4, padx = 10, pady = 5,  sticky = 'NS', rowspan = 6)
@@ -793,10 +800,20 @@ class ContourizeMe(object):
 
     def get_tothresh(self):
         if self.pamVar.get() == 'Grayscale':
+            self.left_label.config(text="Gray Bounds (U/L)")
+            self.mid_label.config(text="(Inactive)")
+            self.right_label.config(text="(Inactive)")
             return self.transformer.transform(self.imgray)
         elif self.pamVar.get() == 'RGB':
+            self.left_label.config(text="Red Bounds (U/L)")
+            self.mid_label.config(text="Green Bounds (U/L)")
+            self.right_label.config(text="Blue Bounds (U/L)")
             return self.transformer.transform(self.im)
         elif self.pamVar.get() == 'HSV':
+            #self.left_label.config(text="Hue Bounds")
+            self.left_label.config(text="Hue (U/L)")
+            self.mid_label.config(text="Saturation (U/L)")
+            self.right_label.config(text="Value (U/L)")
             return self.transformer.transform(self.hsv_im)
 
 
@@ -916,7 +933,9 @@ class ContourizeMe(object):
         if plot:
             logger.info('Plotting...')
 
-            for b in beziers:
+            plt.gca().invert_yaxis()
+
+            for b in self.beziers:
                 t = np.linspace(0., 1., 6)
                 xy = np.array([cubic_smooth_bezier(b, u) for u in t])
 
@@ -963,7 +982,7 @@ class ContourizeMe(object):
             except:
                 filename = tkinter.filedialog.asksaveasfilename()
 
-            if filename != '':
+            if type(filename) == str and filename != '':
                 self.plot_beziers(plot = False)
 
                 mask = np.zeros(self.imgray.shape)
@@ -1009,12 +1028,13 @@ class ContourizeMe(object):
                 else:
                     ofile = Contours(self.contours, self.beziers, self.info)
 
-                pickle.dump(ofile, open('{0}.pkl'.format(filename), 'w'))
+                pickle.dump(ofile, open('{0}.pkl'.format(filename), 'wb'))
 
-                dataf = pd.DataFrame(dataf)
-                dataf.to_csv(filename + '-diameters.csv', index = False)
+                if self.write_diameters:
+                    dataf = pd.DataFrame(dataf)
+                    dataf.to_csv(filename + '-diameters.csv', index = False)
 
-                plt.savefig(filename + '-diameters.png', dpi = 100)
+                    plt.savefig(filename + '-diameters.png', dpi = 100)
                 logger.info('Done!')
 
     def update_info(self):

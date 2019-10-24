@@ -63,8 +63,10 @@ def mesh_file(fname):
     params = fetch_input_params(finput2d, params)
     logger.info(("Successfully loaded simulation parameters from {}.".format(
                                 finput2d)))
-    vertices = svg_parser.make_vertices(all_paths, params)
     outFile = os.path.join(fpath, params['string_name'])
+    logger.init_file_handler(outFile)
+    vertices = svg_parser.make_vertices(all_paths, params)
+
     writeFile(outFile, vertices)
     logger.info(("Vertices have been written to {}.vertex.".format(outFile)))
 

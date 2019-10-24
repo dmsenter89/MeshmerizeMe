@@ -9,16 +9,17 @@ IBAMR.
 
 ISSUES:
     The SVG file needs to be in a very specific format for this to work.
-    1) the file needs to have its height and width given in pixels, as simple
+    1) The file needs to have its height and width given in pixels as simple
         float numbers, not in millimeters or anything, OR specify a viewBox.
-    2) The svg *cannot* be using the translate feature or any other feature
-        that alters its coordinate system relative to the viewbox.
-    3) The svg parser cannot currently handle groups (<g> elements).
+    2) The file can not contain:
+        - Nested viewBoxes/viewPorts
+        - Nested <svg> elements
+        - Use of the "preserveAspectRatio" attribute
+        - <use>, <symbol>, and <def> tags
 """
 
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
-#from svg.path import parse_path
 from svgpathtools import parse_path
 import svgpathtools
 from numpy import linspace
@@ -27,7 +28,9 @@ from .geo_obj import Vertex, writeFile
 from . import meshmerizeme_logger as logger
 import re
 import warnings
+from multiprocess import Process, Array, Value, Manager
 
+ERROR_TOL = 0.10 # Error tolerance: 10% relative error
 
 def get_paths(fname, params={}):
     """ Extract all paths and size from an svg file.
@@ -75,11 +78,11 @@ def get_sim_parameters(fname, params):
                         params['Ny'] = int(s)
             elif 'Lx' in line:
                 for s in line.split():
-                    if re.match("^\d+?(\.\d+)?$", s) is not None:
+                    if re.match(r"^\d+?(\.\d+)?$", s) is not None:
                         params['Lx'] = float(s)
             elif 'Ly' in line:
                 for s in line.split():
-                    if re.match("^\d+?(\.\d+)?$", s) is not None:
+                    if re.match(r"^\d+?(\.\d+)?$", s) is not None:
                         params['Ly'] = float(s)
             elif 'string_name' in line:
                 split_line = line.split()
@@ -87,7 +90,7 @@ def get_sim_parameters(fname, params):
                 sname = sname.strip('"')
                 logger.info(("sname={}".format(sname)))
                 params['SimName'] = sname
-    params['Ds'] = 0.5*params['Lx']/params['Nx']
+    params['Ds'] = 0.5 * params['Lx'] / params['Nx']
     return params
 
 
@@ -104,16 +107,47 @@ def coord_transform(z, params):
     Returns:
         complex(x,y): complex number representing point in input2d coordinates.
     """
-    # w = params['width']
-    # h = params['height']
     w, h = params['Space'].get_max_size()
     x, y = params['Space'].get_origin()
     Lx = params['Lx']
     Ly = params['Ly']
-    xnew = (z.real-x)*Lx/(w-x)
-    ynew = (h-z.imag)*Ly/(h-y)
+    xnew = (z.real - x) * Lx / (w - x)
+    ynew = (h - z.imag) * Ly / (h - y)
     return complex(xnew, ynew)
 
+
+def graph_point_params_and_mse(point_params, iters, costs, path, show_graph=True):
+    if show_graph is False:
+        return
+    import matplotlib.pyplot as plt
+    import matplotlib.animation as animation
+    fig = plt.figure()
+    ax1 = fig.add_subplot(3,1,1)
+    ax2 = fig.add_subplot(3,1,2)
+    ax3 = fig.add_subplot(3,1,3)
+    def animate(i):
+        ax1.clear()
+        ax1.set_title("Density of Point Params")
+        ax1.set_xlabel("Point Params T")
+        ax1.set_ylabel("Frequency")
+        ax1.hist(point_params, bins=len(point_params)*2)
+        ax2.clear()
+        ax2.set_title("MSE of Distances Between Points")
+        ax2.set_xlabel("No. of Gradient Descent Iterations.")
+        ax2.set_ylabel("MSE")
+        ax2.plot(iters, costs)
+        ax3.clear()
+        ax3.set_title("Points on Path")
+        ax3.set_xlabel("X Coord.")
+        ax3.set_ylabel("Y Coord.")
+        coords = [path.point(T) for T in point_params]
+        x = [coord.real for coord in coords]
+        y = [coord.imag for coord in coords]
+        ax3.scatter(x, y)
+        plt.tight_layout()
+        plt.draw()
+    ani = animation.FuncAnimation(fig, animate, interval=1000)
+    plt.show()
 
 def points_on_path(path, params):
     """Figure out how many points are necessary and return those.
@@ -126,40 +160,139 @@ def points_on_path(path, params):
         numpy array with the necessary number of evenly distributed points
         to dissect path objects at the necessary density.
     """
-    #if method==1:
-    #    length = path.length()  # lenght of path in svg system
-    #    z = complex(length, params['height'])
-    #    new_len = abs(coord_transform(z, params))
-    #    num_of_pts = new_len//params['Ds']
-    #    num_of_pts += 1
-    #    point_array = linspace(0,1, num_of_pts)
-    #else:
-    # setup two temporary dummy points
-    points = [0]
-    p0 = 0
-    p1 = 0
+
+    def get_point_coords(point_params):
+        return np.asarray([ path.point(T) for T in point_params ])
+
+    def get_segment_lengths(point_coords):
+        return np.abs( point_coords[1:] - point_coords[:-1] )
+ 
+    def get_mean_squared_relative_error(segment_lengths, ds):
+        return np.mean( np.square( (segment_lengths - ds) / ds ) )
+
+    def get_mse_gradient(point_params, ds):
+        num_points = len(point_params)
+        num_segments = num_points - 1
+        point_coords = get_point_coords(point_params)
+        segment_lengths = get_segment_lengths(point_coords)
+        segment_vectors = point_coords[1:] - point_coords[:-1]
+        segment_vectors = np.stack((segment_vectors.real, segment_vectors.imag), -1)
+        path_derivatives = np.asarray([ path.derivative(T) for T in point_params ])
+        path_derivatives = np.stack((path_derivatives.real, path_derivatives.imag), -1)
+        gradient = np.zeros(num_points)
+
+        gradient_term_1 = np.clip( (segment_lengths - ds) * np.power(segment_lengths, -1), -99999, 99999)
+        gradient_term_2 = np.asarray([ np.dot( segment_vectors[i], path_derivatives[i+1] ) for i in range(num_segments) ])
+        gradient_term_3 = np.asarray([ np.dot( segment_vectors[i], path_derivatives[i] ) for i in range(num_segments) ])
+
+        gradient[1:] += gradient_term_1 * gradient_term_2
+        gradient[:-1] -= gradient_term_1 * gradient_term_3
+        gradient /= num_segments * ( ds ** 2 )
+
+        return gradient
+    
+    def get_best_subpath_params(path, ds, min_t=0, max_t=1, point_params=None):
+        def get_graph_args():
+            nonlocal point_params, mse
+            shared_point_params = Array("d", point_params)
+            iters = Array("i", [i - 50 for i in range(50)])
+            costs = Array("d", [mse] * 50)
+            return shared_point_params, iters, costs
+
+        def update_graph_args():
+            nonlocal iters, costs, shared_point_params, mse, point_params
+            iters[:-1] = iters[1:]
+            iters[-1] += 1
+            costs[:-1] = costs[1:]
+            costs[-1] = mse
+            shared_point_params[:] = point_params
+        num_segments = int( np.ceil(path.length(T0=min_t, T1=max_t) / ds) )
+        num_points = num_segments + 1        
+        should_show_graph = False
+        step_size = 0.0000005
+        max_iter = 500
+        cur_iter = 0
+        if point_params is None:
+            point_params =  np.linspace(min_t, max_t, num_points) #np.sort( np.random.uniform(0, 1, num_points) )
+        else:
+            # should_show_graph = True
+            num_points = len(point_params)
+            num_segments = num_points - 1
+            step_size *= 100
+            max_iter = 50
+        point_coords = get_point_coords(point_params)
+        segment_lengths = get_segment_lengths(point_coords)
+        mse = get_mean_squared_relative_error(segment_lengths, ds)
+        mse_difference = 1
+
+        shared_point_params, iters, costs = get_graph_args()
+        p = Process(target=graph_point_params_and_mse, args=(shared_point_params, iters, costs, path, should_show_graph))
+        p.start()
+
+        while np.abs(mse_difference) > 1e-6 and cur_iter < max_iter:
+            cur_iter += 1
+            # print(f"{cur_iter} / {max_iter}. mse={mse}. mse_diff={mse_difference}")
+            mse_gradient = get_mse_gradient(point_params, ds)
+            point_params -= step_size * mse_gradient
+            point_params = np.clip( point_params , min_t, max_t )
+            point_coords = get_point_coords(point_params)
+            segment_lengths = get_segment_lengths(point_coords)
+            new_mse = get_mean_squared_relative_error(segment_lengths, ds)
+            mse_difference = mse - new_mse
+            mse = new_mse
+            update_graph_args()
+        p.join()
+
+        return np.unique(point_params)
+
     ds = params['Ds']
-    # keep track   of the ratio of 2nd to 1st deriv
-    rato = np.abs(path.derivative(p0, 2))/np.abs(path.derivative(p0, 1))
-    while p1<1:
-        p1 = p0 + ds / np.abs(path.derivative(p0)) 
-        if p1>1.0: # make sure we don't run outside of [0,1]
-            break
-        ratn = np.abs(path.derivative(p1, 2))/np.abs(path.derivative(p1))
-        if ratn/rato > 3: # large change in ratio, be careful
-            try:
-                # use previous two points as step instead
-                p1 = p0 + (points[-1]-points[-2])
-            except:
-                # we don't have two steps available yet
-                p1 = p0 + (1/3)*(p1-p0) # play with differnt vals
-            if p1>1.0: # make sure we don't run outside of [0,1]
-                break
-            ratn = np.abs(path.derivative(p1, 2))/np.abs(path.derivative(p1))
-        points.append(p1)
-        p0 = p1
-    point_array = np.asarray(points)
-    return point_array
+    subpath_length = ds*25
+    num_subpaths = int( path.length() / subpath_length ) 
+    subpath_boundary_points = [0]
+    for i in range(num_subpaths-1):
+        subpath_boundary_points.append( path.ilength((i+1) * subpath_length) )
+    subpath_boundary_points.append(1)
+
+    def get_best_subpath_params_in_parallel(cur_subpath, point_params):        
+        while cur_subpath.value < num_subpaths:
+            subpath_index = cur_subpath.value
+            cur_subpath.value = subpath_index + 1
+            print(f"{subpath_index} / {num_subpaths} subpaths")
+            subpath_params = get_best_subpath_params(path, ds, min_t=subpath_boundary_points[subpath_index], max_t=subpath_boundary_points[subpath_index+1])
+            if subpath_index < num_subpaths - 1:
+                subpath_params = subpath_params[:-1] # Remove last point so it is not included twice.
+            point_params.extend( subpath_params ) 
+
+    point_params = None
+    with Manager() as manager:
+        cur_subpath = Value("i", 0)
+        shared_point_params = manager.list()
+        num_parallel_processes = 10
+        parallel_processes = []
+        for i in range(num_parallel_processes):
+            p = Process(target=get_best_subpath_params_in_parallel, args=(cur_subpath, shared_point_params))
+            parallel_processes.append(p)
+            p.start()
+        for p in parallel_processes:
+            p.join()
+        point_params = shared_point_params[:]
+    point_params.sort()
+    point_params = get_best_subpath_params(path, ds, point_params=point_params)
+
+    return point_params
+
+
+def transform_matrix(params):
+    xmax, ymax = params['Space'].get_max_size()
+    xmin, ymin = params['Space'].get_origin()
+    w = xmax-xmin
+    h = ymax-ymin
+    Lx = params['Lx']
+    Ly = params['Ly']
+    A = np.diag([Lx/w, Ly/h, 1])
+    A[0,2] = -Lx*xmin/w
+    A[1,2] = -Ly*ymin/h
+    return A
 
 
 def make_vertices(path_list, params):
@@ -173,19 +306,51 @@ def make_vertices(path_list, params):
         vertex_vec: list containing all vertex points obtained from the
         svg file.
     """
-    vertex_vec = []
     logger.info("Begin making vertices.")
+
+    vertex_vec = []
+    error_vec = []
+    warning_messages = []
+    ds = params['Ds']
+    segments = []
+    A = transform_matrix(params) # Create point transform to target space
+
     for path in tqdm(path_list):
         path_as_svgpathtools_path = parse_path( path.get('d') )
         path_as_svgpathtools_path = transform( path_as_svgpathtools_path, path.get_aggregate_transform_matrix() )
-        cvert_vec = []
-        pts = points_on_path(path_as_svgpathtools_path, params)
-        for p in pts:
-            z = path_as_svgpathtools_path.point(p)
-            zn = coord_transform(z, params)
-            vpoint = Vertex(zn.real, zn.imag)
-            cvert_vec.append(vpoint)
-        vertex_vec.extend(cvert_vec)
+
+        for segment in path_as_svgpathtools_path:
+            # Transform curves from SVG space -> experimental space
+            ctrl_points_svg = np.asarray(segment.bpoints() )
+            ctrl_points_svg_mat = np.ones((3, len(ctrl_points_svg) ))
+            ctrl_points_svg_mat[0,:] = ctrl_points_svg.real
+            ctrl_points_svg_mat[1,:] = ctrl_points_svg.imag
+            ctrl_points_transformed_mat = np.matmul(A, ctrl_points_svg_mat)
+            ctrl_points_transformed = ctrl_points_transformed_mat[0] + 1j* ctrl_points_transformed_mat[1]
+            segment_transformed = svgpathtools.bpoints2bezier(ctrl_points_transformed)
+            segments.append(segment_transformed)
+
+    path_transformed = svgpathtools.Path(*segments)
+    pts = points_on_path(path_transformed, params)
+
+    for cur_point_index, p in enumerate(pts):
+        z = path_transformed.point(p)
+        cur_point = Vertex(z.real, z.imag)
+        vertex_vec.append(cur_point)
+        if cur_point_index > 0:
+            previous_point = vertex_vec[cur_point_index - 1]
+            distance = chk_vertex_dist(cur_point, previous_point)
+            rel_error = np.abs((distance - ds) / ds)
+            error_vec.append(rel_error)
+            if rel_error > ERROR_TOL:
+                warning_messages.append(f"Max Euclidean distance exceeded by {100*rel_error:.5f}% at vertex { cur_point.getPos() } on the path with attributes { path.attr }.")
+
+    for warning_message in warning_messages:
+        logger.warning(warning_message)
+    logger.info(f"Summary - Mean Rel. Err:  {100*np.mean(error_vec):.5f}%.")
+    if len(warning_messages) > 0:
+        logger.info("WARNING - Some points have spacing greater than the defined error tolerance. Please see the log file for details.")
+
     return vertex_vec
 
 
@@ -199,9 +364,9 @@ def chk_vertex_dist(a, b):
     Returns:
         Euclidean distance between vertex a and vertex b.
     """
-    dx = a.x-b.x
-    dy = a.y-b.y
-    return (dx**2+dy**2)**(1/2)
+    dx = a.x - b.x
+    dy = a.y - b.y
+    return (dx**2 + dy**2) ** (1/2)
 
 
 class Space():
@@ -291,12 +456,12 @@ class Svg():
             curElementAndParent = element_tree_stack.pop()
             curElement = curElementAndParent["element"]
             parentOfCurElement = curElementAndParent["parent"]
-            
+
             curElementAsSvgObject = SvgObject(curElement)
-            curElementAsSvgObject.parent = parentOfCurElement            
+            curElementAsSvgObject.parent = parentOfCurElement
             objects.append(curElementAsSvgObject)
 
-            for child_element in list(curElement):
+            for child_element in list(curElement)[::-1]: # Push the first child to the stack last.
                 push_element_and_its_parent_to_stack(child_element, curElementAsSvgObject)
 
         return objects
@@ -329,6 +494,9 @@ class SvgObject():
         self.attr = node.attrib  # dic with attributes of element
         self.parent = None
 
+    def __str__(self):
+        return f"{self.type} | {self.attr}"
+
     def get(self, attribute):
         """ Getter returns an attribute from the attribute dictionary as string.
 
@@ -353,9 +521,6 @@ class SvgObject():
             cur_SvgObject = cur_SvgObject.parent
         return transform_matrix
 
-    def print_object(self):
-        """Print node name and attribute dictionary to console."""
-        print(("{} | {}".format(self.type, self.attr)))
 
 
 # This function was taken as is from the svgpathtools library.
