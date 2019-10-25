@@ -39,7 +39,10 @@ setup(
         "scikit-learn",
         "svgpathtools",
         "tqdm >= 4.32.1",
-        ],
+    ],
+    extras_require={
+        'dev-tools':  ["Jinja2 >= 2.10.3"],
+    },
 
     author='Michael Senter, Dylan Ray, and Steven Thomas',
     author_email='dmsenter@live.unc.edu',
