@@ -10,13 +10,13 @@ That's it! Just make sure an input2d file is also present in the same folder as 
 {{ render_params["meshmerizeme_help_message"] }}
 ```
 
-MeshmerizeMe has two main command-line switches: `-i` or `--input-file` and `-p` or `--plot`. If neither is supplied, MeshmerizeMe will assume that you wanted `-i`. The switch is followed by one or more filenames, e.g.
+MeshmerizeMe has two main functions: creating vertex files (this is the default function) and plotting vertex files (you can enable this with the `-p` or `--plot` flag). The command is followed by one or more filenames, e.g.
 ```bash
-$ MeshmerizeMe.py -i /home/user/test1/file1.svg /home/user/test2/file2.svg
+$ MeshmerizeMe.py /home/user/test1/file1.svg /home/user/test2/file2.svg
 ```
 and so forth. MeshmerizeMe also features a batch-processing mode. If the filenames are omitted it will read files from stdin instead. For example, if you have a text file called myfiles.txt which has multiple files and paths (1 per line), you can call MeshmerizeMe as follows:
 ```
-$ MeshmerizeMe.py -i < myfiles.txt
+$ MeshmerizeMe.py < myfiles.txt
 ```
 Both modes function the same if the plotting option (`-p`) is specified. There's only one difference in plotting: if you specify the filenames on the command-line, each plot will be displayed. If you use batch-processing, the plots will be written to a png-file in the same folder as the .vertex files you plotted.
 

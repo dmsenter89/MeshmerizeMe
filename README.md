@@ -7,24 +7,12 @@ the geometry looks as intended.
 This version will only handle 2D code. See the project wiki for more
 information.
 
-## Input and Output
-- Input
-    - An input2d file for the simulation.
-    - An SVG file ___without___:
-        - Nested viewBoxes/viewPorts
-        - Nested `<svg>` elements
-        - Use of the "preserveAspectRatio" attribute
-        - Use of units other than pixels
-        - `<use>`, `<symbol>`, and `<def>` tags
-- Output
-    - A .vertex file that can be plotted.
-
 ## Usage:
 To convert image files into the intermediate SVG format, call the 
 `ContourizeMe` script. It will start a GUI for extracting contours. 
 
 ```
-usage: ContourizeMe [-h] [--movie MOVIE] [--scale SCALE] image
+usage: ContourizeMe [-h] image
 
 allows the user to slide to a values for 8-bit pixel thresholding
 
@@ -32,27 +20,26 @@ positional arguments:
   image
 
 optional arguments:
-  -h, --help     show this help message and exit
-  --movie MOVIE
-  --scale SCALE
+  -h, --help  show this help message and exit
+
 ```
 
 Call the `MeshmerizeMe` script to mesh the resulting SVG files.
 
 ```
-usage: MeshmerizeMe [-h] [-i | -p] [--subpath-length SUBPATH_LENGTH]
+usage: MeshmerizeMe [-h] [-p] [--subpath-length SUBPATH_LENGTH]
                     [--num-points NUM_POINTS] [--learning-rate LEARNING_RATE]
                     [--max-iter MAX_ITER] [--threshold THRESHOLD]
                     [--show-graph]
                     [--num-parallel-processes NUM_PARALLEL_PROCESSES]
                     [fname [fname ...]]
 
-Welcome to MeshmerizeMe. MeshmerizeMe is a Python script intended to assist 
-with creating geometries for fluid simulations using IBAMR and IB2d. It uses a 
-user-supplied SVG file and input2d file to create .vertex files, and can plot 
-the same. MeshmerizeMe uses the 'gradient descent' algorithm to minimize the 
-relative error of distances between points. First, the path is split into 
-multiple segments which are estimated in parallel. Then, the resulting points 
+Welcome to MeshmerizeMe. MeshmerizeMe is a Python script intended to assist
+with creating geometries for fluid simulations using IBAMR and IB2d. It uses a
+user-supplied SVG file and input2d file to create .vertex files, and can plot
+the same. MeshmerizeMe uses the 'gradient descent' algorithm to minimize the
+relative error of distances between points. First, the path is split into
+multiple segments which are estimated in parallel. Then, the resulting points
 are used as initial estimates for the final aggregate minimization.
 
 positional arguments:
@@ -61,10 +48,7 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -i, --input-file      Mesh SVG file(s). Default option. Exclusive with plot.
-                        (default: True)
-  -p, --plot            Plot existing .vertex file(s). Exclusive with input-
-                        file. (default: False)
+  -p, --plot            Plot existing .vertex file(s). (default: False)
   --subpath-length SUBPATH_LENGTH
                         Length of subpaths to estimate in parallel in terms of
                         ds. (default: 25)
@@ -95,6 +79,7 @@ Note that the file argument is optional. If no file is specified on the
 commandline the program will start in batch mode. If the user supplies the
 path to one or more file(s) on the commandline, MeshmerizeMe will proceed to
 process them.
+
 ```
 
 # Installation
@@ -110,3 +95,12 @@ $ pip install -r requirements.txt
 ## Requirements and Dependencies:
 
 MeshmerizeMe was written for Python 3. Install requires are included in `setup.py`. A `requirements.txt` is also provided for user convenience. The minimal package requirements are: opencv, pandas, Pmw, scikit-image and scikit-learn, svgpathtools, and tqdm.
+
+# Limitations
+
+MeshmerizeMe does not currently support SVG files containing any of the following:
+- Nested viewBoxes/viewPorts
+- Nested `<svg>` elements
+- Use of the "preserveAspectRatio" attribute
+- Use of units other than pixels
+- `<use>`, `<symbol>`, and `<def>` tags

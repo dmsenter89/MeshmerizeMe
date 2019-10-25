@@ -17,13 +17,11 @@ def batch(args):
     for line in sys.stdin:
         path = line.strip()
         if path=='':
-            break
-        if args.input_file:
-            mesh_file(path)
+            break            
         elif args.plot:
             plot_file(path, display=False)
         else:
-            logger.warning("You shouldn't see this line.")
+            mesh_file(path)
     logger.info("Thank you for using MeshmerizeMe.")
 
 
@@ -79,17 +77,17 @@ def process_all_files(args):
     """
     logger.info("MeshmerizeMe was started in CLI mode.")
 
-    if args.input_file:
+    if args.plot:
+        logger.info("MeshmerizeMe was started in plot mode.")
+        for f in args.fname:
+            plot_file(f.name)
+    else:
         logger.info("MeshmerizeMe was started in mesh-mode.")
         for f in args.fname:
             mesh_file(f.name)
         logger.info("MeshmerizeMe finished meshing your files. "
               "Please check your files for integrity.")
-    elif args.plot:
-        logger.info("MeshmerizeMe was started in plot mode.")
-        for f in args.fname:
-            plot_file(f.name)
-
+    
     logger.info("Thank you for using MeshmerizeMe.")
 
 
@@ -115,13 +113,9 @@ def main(args=None):
                 "more file(s) on the commandline, MeshmerizeMe will proceed "
                 "to process them.",
                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    arggroup = parser.add_mutually_exclusive_group()
-    arggroup.add_argument('-i', '--input-file', action="store_true",
-                        help="Mesh SVG file(s). Default option. "
-                        "Exclusive with plot.",
-                        default=True)
-    arggroup.add_argument('-p', '--plot', action="store_true",
-                help="Plot existing .vertex file(s). Exclusive with input-file.",
+
+    parser.add_argument('-p', '--plot', action="store_true",
+                help="Plot existing .vertex file(s).",
                 default=False)
 
     parser.add_argument('--subpath-length', type=float, action="store", 
@@ -129,12 +123,12 @@ def main(args=None):
                 default=USER_CONFIG["subpath_length"])
 
     parser.add_argument('--num-points', type=int, action="store", 
-            help="Number of points to fit to the path. Leave this blank to let the script automatically determine a value.",
-            default=USER_CONFIG["num_points"])
+                help="Number of points to fit to the path. Leave this blank to let the script automatically determine a value.",
+                default=USER_CONFIG["num_points"])
 
     parser.add_argument('--learning-rate', type=float, action="store", 
-            help="The learning rate used by the gradient descent algorithm for the final aggregate minimization over the entire path.",
-            default=USER_CONFIG["learning_rate"])
+                help="The learning rate used by the gradient descent algorithm for the final aggregate minimization over the entire path.",
+                default=USER_CONFIG["learning_rate"])
     
     parser.add_argument('--max-iter', type=int, action="store", 
                 help="Maximum number of gradient descent iterations for the final aggregate minimization over the entire path.",
@@ -155,10 +149,10 @@ def main(args=None):
                 help="Number of processes to estimate subpaths in parallel.",
                 default=USER_CONFIG["num_parallel_processes"])
 
-
     parser.add_argument('fname', nargs='*', type=argparse.FileType('r'),
                 help="Path to file(s) for processing. If omitted, program will "
                 "run in batch-processing mode.")
+    
     args = parser.parse_args()
     
     for arg in vars(args):
@@ -166,8 +160,6 @@ def main(args=None):
         if user_config_key_name in USER_CONFIG.keys():
             USER_CONFIG[ user_config_key_name ] = getattr(args, arg)
 
-    if args.plot:
-            args.input_file=False
     if not args.fname:
         # assumes user wants to batch process files from stdi
         batch(args)

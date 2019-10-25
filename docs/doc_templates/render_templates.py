@@ -8,7 +8,7 @@ target_dir = ".."
 
 # All template file names must end with .md
 template_file_names = [ file_name for file_name in os.listdir(templates_dir) if ".md" in file_name ]
-print(template_file_names)
+
 render_env = Environment(
     loader=FileSystemLoader(templates_dir),
     autoescape=select_autoescape(["html", "xml"])

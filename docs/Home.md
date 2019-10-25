@@ -26,7 +26,7 @@ optional arguments:
 Call the `MeshmerizeMe` script to mesh the resulting SVG files.
 
 ```
-usage: MeshmerizeMe [-h] [-i | -p] [--subpath-length SUBPATH_LENGTH]
+usage: MeshmerizeMe [-h] [-p] [--subpath-length SUBPATH_LENGTH]
                     [--num-points NUM_POINTS] [--learning-rate LEARNING_RATE]
                     [--max-iter MAX_ITER] [--threshold THRESHOLD]
                     [--show-graph]
@@ -47,10 +47,7 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -i, --input-file      Mesh SVG file(s). Default option. Exclusive with plot.
-                        (default: True)
-  -p, --plot            Plot existing .vertex file(s). Exclusive with input-
-                        file. (default: False)
+  -p, --plot            Plot existing .vertex file(s). (default: False)
   --subpath-length SUBPATH_LENGTH
                         Length of subpaths to estimate in parallel in terms of
                         ds. (default: 25)
