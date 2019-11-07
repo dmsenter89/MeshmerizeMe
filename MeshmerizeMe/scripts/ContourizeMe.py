@@ -275,8 +275,8 @@ class optionsPopupWindow(object):
         self.drawWidth_entry = Entry(general, textvariable = self.drawWidth, width = 10, bd = 3)
         self.drawWidth_entry.grid(row = 0, column = 1, padx = 5)
 
-        c = Checkbutton(general, text="Compute and write diameter info", variable=self.wdiams)
-        c.grid(row = 1, padx = 5, pady = 5)
+        # c = Checkbutton(general, text="Compute and write diameter info", variable=self.wdiams)
+        # c.grid(row = 1, padx = 5, pady = 5)
 
         # Label(general, text = 'Curvature Percentile histogram:').grid(row = 2, padx = 5, pady = 5)
         # self.acc_p_entry = Entry(general, textvariable = self.acc_p, width = 10, bd = 3)
