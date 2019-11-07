@@ -198,7 +198,11 @@ def make_vertices(path_list, params):
             rel_error = np.abs((distance - ds) / ds)
             error_vec.append(rel_error)
             if rel_error > ERROR_TOL:
-                warning_messages.append(f"Max Euclidean distance exceeded by {100*rel_error:.5f}% at vertex { cur_point.getPos() } on the path with attributes { path.attr }.")
+                path_description = str(path.attr)
+                max_description_length = 100
+                if len(path_description) > max_description_length:
+                    path_description = path_description[:max_description_length] + "..."
+                warning_messages.append(f"Max Euclidean distance exceeded by {100*rel_error:.5f}% at vertex { cur_point.getPos() } on the path with attributes { path_description }.")
 
     for warning_message in warning_messages:
         logger.warning(warning_message)
