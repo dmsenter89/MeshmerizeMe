@@ -265,8 +265,8 @@ class optionsPopupWindow(object):
         self.drawWidth = IntVar(self.top)
         self.drawWidth.set(drawWidth)
 
-        self.acc_p = StringVar(self.top)
-        self.acc_p.set(str(percentile))
+        # self.acc_p = StringVar(self.top)
+        # self.acc_p.set(str(percentile))
 
         if write_diameters:
             self.wdiams.set(1)
@@ -278,9 +278,9 @@ class optionsPopupWindow(object):
         c = Checkbutton(general, text="Compute and write diameter info", variable=self.wdiams)
         c.grid(row = 1, padx = 5, pady = 5)
 
-        Label(general, text = 'Percentile of acceleration histogram:').grid(row = 2, padx = 5, pady = 5)
-        self.acc_p_entry = Entry(general, textvariable = self.acc_p, width = 10, bd = 3)
-        self.acc_p_entry.grid(row = 2, column = 1, padx = 5)
+        # Label(general, text = 'Curvature Percentile histogram:').grid(row = 2, padx = 5, pady = 5)
+        # self.acc_p_entry = Entry(general, textvariable = self.acc_p, width = 10, bd = 3)
+        # self.acc_p_entry.grid(row = 2, column = 1, padx = 5)
 
         parameters = LabelFrame(self.top, text="Smoothing parameters", padx=5, pady=5,  fg = '#56A0D3')
 
@@ -957,7 +957,7 @@ class ContourizeMe(object):
         else:
             self.write_diameters = False
 
-        self.percentile = float(w.acc_p.get())
+        # self.percentile = float(w.acc_p.get())
 
         self.drawWidth = w.drawWidth.get()
 
