@@ -1031,7 +1031,7 @@ class ContourizeMe(object):
                 else:
                     ofile = Contours(self.contours, self.beziers, self.info)
 
-                pickle.dump(ofile, open('{0}.pkl'.format(filename), 'wb'))
+                # pickle.dump(ofile, open('{0}.pkl'.format(filename), 'wb'))
 
                 if self.write_diameters:
                     dataf = pd.DataFrame(dataf)
