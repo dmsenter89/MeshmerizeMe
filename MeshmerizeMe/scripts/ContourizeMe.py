@@ -988,8 +988,8 @@ class ContourizeMe(object):
                 mask = np.zeros(self.imgray.shape)
                 cv2.drawContours(mask, self.contours, -1, color = 1., thickness = -1)
 
-                logger.info('Computing normal vectors and diameter...')
                 if self.write_diameters:
+                    logger.info('Computing normal vectors and diameter...')
                     dataf, xys, diameters, nvs, si = get_diameters(self.outs, self.beziers, mask, acc_bound = self.percentile)
 
                     xx1 = dataf['x1']
@@ -1016,7 +1016,7 @@ class ContourizeMe(object):
                         paths.append(CubicBezier(x1 + 1j * y1, x1 + 1j * y1, cx2 + 1j * cy2, x2 + 1j * y2))
 
 
-                logger.info(('Writing SVG file to "{}"'.format(filename + '.svg')))
+                logger.info(('Writing SVG file to "{}" This may take a while.'.format(filename + '.svg')))
 
                 wsvg(paths, filename = filename + '.svg')
 
@@ -1035,7 +1035,7 @@ class ContourizeMe(object):
                     dataf.to_csv(filename + '-diameters.csv', index = False)
 
                     plt.savefig(filename + '-diameters.png', dpi = 100)
-                logger.info('Done!')
+                logger.info('Done writing the SVG!')
 
     def update_info(self):
         r1, r2, b1, b2, g1, g2 = self.get_bounds()

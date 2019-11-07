@@ -362,7 +362,7 @@ class Chanvese(object):
     def chanvese(self, I, init_mask, max_its=200, alpha=0.2,
                  thresh=2, color='r', display=False):
         I = I.astype(np.float)
-        print ('Chanvese smoothing...')
+        # print ('Chanvese smoothing...')
 
         # Create a signed distance map (SDF) from mask
         phi = mask2phi(init_mask)
@@ -383,13 +383,13 @@ class Chanvese(object):
                 # Intermediate output
                 if display:
                     if np.mod(its, 5) == 0:
-                        logger.info(('iteration: {0}'.format(its)))
+                        logger.info(('Chanvese smoothing - iteration: {0}'.format(its+1)))
                         fig, axes = plt.subplots(ncols=2, figsize = (16, 8))
                         show_curve_and_phi(fig, I, phi, color)
                         ix += 1
                 else:
                     if np.mod(its, 10) == 0:
-                        logger.info(('iteration: {0}'.format(its)))
+                        logger.info(('Chanvese smoothing - iteration: {0}'.format(its+1)))
 
                 # Find interior and exterior mean
                 upts = np.flatnonzero(phi <= 0)  # interior points
