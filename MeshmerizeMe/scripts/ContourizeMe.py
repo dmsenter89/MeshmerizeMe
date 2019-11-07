@@ -982,6 +982,9 @@ class ContourizeMe(object):
             except:
                 filename = tkinter.filedialog.asksaveasfilename()
 
+            if not filename.endswith(".svg"):
+                filename = filename + ".svg"
+
             if type(filename) == str and filename != '':
                 self.plot_beziers(plot = False)
 
@@ -1016,9 +1019,9 @@ class ContourizeMe(object):
                         paths.append(CubicBezier(x1 + 1j * y1, x1 + 1j * y1, cx2 + 1j * cy2, x2 + 1j * y2))
 
 
-                logger.info(('Writing SVG file to "{}" This may take a while.'.format(filename + '.svg')))
+                logger.info(('Writing SVG file to "{}" This may take a while.'.format(filename)))
 
-                wsvg(paths, filename = filename + '.svg')
+                wsvg(paths, filename = filename)
 
                 # Update the information dictionary
                 self.update_info()
