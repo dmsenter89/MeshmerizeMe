@@ -977,10 +977,15 @@ class ContourizeMe(object):
     def save_to_svg(self):
         plt.clf()
         if len(self.contours) > 0:
+            filename = None
             try:
                 filename = filedialog.asksaveasfilename()
             except:
-                filename = tkinter.filedialog.asksaveasfilename()
+                try:
+                    filename = tkinter.filedialog.asksaveasfilename()
+                except:
+                    import tkinter.filedialog
+                    filename = tkinter.filedialog.asksaveasfilename()
 
             if not filename.endswith(".svg"):
                 filename = filename + ".svg"
