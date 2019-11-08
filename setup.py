@@ -30,6 +30,7 @@ setup(
 
     # dependencies
     install_requires=[
+        "matplotlib >= 3.1.1",
         "multiprocess >= 0.70.8",
         "opencv-python >= 4.1.0.25",
         "pandas >= 0.15.2",
@@ -38,7 +39,10 @@ setup(
         "scikit-learn",
         "svgpathtools",
         "tqdm >= 4.32.1",
-        ],
+    ],
+    extras_require={
+        'dev-tools':  ["Jinja2 >= 2.10.3"],
+    },
 
     author='Michael Senter, Dylan Ray, and Steven Thomas',
     author_email='dmsenter@live.unc.edu',

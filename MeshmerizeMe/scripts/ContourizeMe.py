@@ -265,8 +265,8 @@ class optionsPopupWindow(object):
         self.drawWidth = IntVar(self.top)
         self.drawWidth.set(drawWidth)
 
-        self.acc_p = StringVar(self.top)
-        self.acc_p.set(str(percentile))
+        # self.acc_p = StringVar(self.top)
+        # self.acc_p.set(str(percentile))
 
         if write_diameters:
             self.wdiams.set(1)
@@ -275,12 +275,12 @@ class optionsPopupWindow(object):
         self.drawWidth_entry = Entry(general, textvariable = self.drawWidth, width = 10, bd = 3)
         self.drawWidth_entry.grid(row = 0, column = 1, padx = 5)
 
-        c = Checkbutton(general, text="Compute and write diameter info", variable=self.wdiams)
-        c.grid(row = 1, padx = 5, pady = 5)
+        # c = Checkbutton(general, text="Compute and write diameter info", variable=self.wdiams)
+        # c.grid(row = 1, padx = 5, pady = 5)
 
-        Label(general, text = 'Percentile of acceleration histogram:').grid(row = 2, padx = 5, pady = 5)
-        self.acc_p_entry = Entry(general, textvariable = self.acc_p, width = 10, bd = 3)
-        self.acc_p_entry.grid(row = 2, column = 1, padx = 5)
+        # Label(general, text = 'Curvature Percentile histogram:').grid(row = 2, padx = 5, pady = 5)
+        # self.acc_p_entry = Entry(general, textvariable = self.acc_p, width = 10, bd = 3)
+        # self.acc_p_entry.grid(row = 2, column = 1, padx = 5)
 
         parameters = LabelFrame(self.top, text="Smoothing parameters", padx=5, pady=5,  fg = '#56A0D3')
 
@@ -957,7 +957,7 @@ class ContourizeMe(object):
         else:
             self.write_diameters = False
 
-        self.percentile = float(w.acc_p.get())
+        # self.percentile = float(w.acc_p.get())
 
         self.drawWidth = w.drawWidth.get()
 
@@ -977,10 +977,18 @@ class ContourizeMe(object):
     def save_to_svg(self):
         plt.clf()
         if len(self.contours) > 0:
+            filename = None
             try:
                 filename = filedialog.asksaveasfilename()
             except:
-                filename = tkinter.filedialog.asksaveasfilename()
+                try:
+                    filename = tkinter.filedialog.asksaveasfilename()
+                except:
+                    import tkinter.filedialog
+                    filename = tkinter.filedialog.asksaveasfilename()
+
+            if not filename.endswith(".svg"):
+                filename = filename + ".svg"
 
             if type(filename) == str and filename != '':
                 self.plot_beziers(plot = False)
@@ -988,8 +996,8 @@ class ContourizeMe(object):
                 mask = np.zeros(self.imgray.shape)
                 cv2.drawContours(mask, self.contours, -1, color = 1., thickness = -1)
 
-                logger.info('Computing normal vectors and diameter...')
                 if self.write_diameters:
+                    logger.info('Computing normal vectors and diameter...')
                     dataf, xys, diameters, nvs, si = get_diameters(self.outs, self.beziers, mask, acc_bound = self.percentile)
 
                     xx1 = dataf['x1']
@@ -1016,9 +1024,9 @@ class ContourizeMe(object):
                         paths.append(CubicBezier(x1 + 1j * y1, x1 + 1j * y1, cx2 + 1j * cy2, x2 + 1j * y2))
 
 
-                logger.info(('Writing SVG file to "{}"'.format(filename + '.svg')))
+                logger.info(('Writing SVG file to "{}" This may take a while.'.format(filename)))
 
-                wsvg(paths, filename = filename + '.svg')
+                wsvg(paths, filename = filename)
 
                 # Update the information dictionary
                 self.update_info()
@@ -1028,14 +1036,14 @@ class ContourizeMe(object):
                 else:
                     ofile = Contours(self.contours, self.beziers, self.info)
 
-                pickle.dump(ofile, open('{0}.pkl'.format(filename), 'wb'))
+                # pickle.dump(ofile, open('{0}.pkl'.format(filename), 'wb'))
 
                 if self.write_diameters:
                     dataf = pd.DataFrame(dataf)
                     dataf.to_csv(filename + '-diameters.csv', index = False)
 
                     plt.savefig(filename + '-diameters.png', dpi = 100)
-                logger.info('Done!')
+                logger.info('Done writing the SVG!')
 
     def update_info(self):
         r1, r2, b1, b2, g1, g2 = self.get_bounds()
@@ -1078,8 +1086,11 @@ def main(args=None):
 
     parser = argparse.ArgumentParser(description="allows the user to slide to a values for 8-bit pixel thresholding")
     parser.add_argument("image", default = "None")
-    parser.add_argument("--movie", default = "None")
-    parser.add_argument("--scale", default = "0.5")
+    # following args seem deprecated, slated for removal.
+    # parser.add_argument("--movie", default = "None")
+    # parser.add_argument("--scale", default = "0.5")
 
     args = parser.parse_args()
     ContourizeMe(args.image)
+    
+    logger.shutdown()

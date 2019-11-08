@@ -1,11 +1,10 @@
-# MeshmerizeMe
-MeshmerizeMe is a set of Python scripts intended to convert image files into
-geometry files for use with immersed boundary software like IBAMR and IB2D. 
-It also includes the ability to plot the resulting .vertex files to verify 
-the geometry looks as intended.
+Welcome to the MeshmerizeMe wiki!
 
-This version will only handle 2D code. See the project wiki for more
-information.
+# Summary 
+MeshmerizeMe is a software for the creation of 2D geometry files for use with [IB2d](https://github.com/nickabattista/IB2d) and [IBAMR](https://github.com/IBAMR/IBAMR). The software comes with two main scripts that will be installed into your system's path:
+
+- ContourizeMe: provides a graphical interface to automatically extract contours from an image into an SVG file based on adjustable parameters.
+- MeshmerizeMe: creates *.vertex files describing the geometry of SVG images at the appropriate resolution according to an IB2d style `input2d` file. This script can also plot the resulting vertices for visual verification of their accuracy.
 
 ## Usage:
 To convert image files into the intermediate SVG format, call the 
@@ -81,26 +80,3 @@ path to one or more file(s) on the commandline, MeshmerizeMe will proceed to
 process them.
 
 ```
-
-# Installation
-Use `pip install .` from the main package directory to install MeshmerizeMe.
-If you prefer using a virtual environment with the supplied requirements.txt,
-use
-
-```shell
-$ pip install . --no-deps
-$ pip install -r requirements.txt  
-```
-
-## Requirements and Dependencies:
-
-MeshmerizeMe was written for Python 3. Install requires are included in `setup.py`. A `requirements.txt` is also provided for user convenience. The minimal package requirements are: opencv, pandas, Pmw, scikit-image and scikit-learn, svgpathtools, and tqdm.
-
-# Limitations
-
-MeshmerizeMe does not currently support SVG files containing any of the following:
-- Nested viewBoxes/viewPorts
-- Nested `<svg>` elements
-- Use of the "preserveAspectRatio" attribute
-- Use of units other than pixels
-- `<use>`, `<symbol>`, and `<def>` tags
