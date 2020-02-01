@@ -43,7 +43,7 @@ def POINTS_ESTIMATION_USER_CONFIG(PARSED_SVG_TEST_STRUCTURE_PATHS):
 
 def test_get_point_coords(PARSED_SVG_TEST_STRUCTURE_PATHS):
     path = PARSED_SVG_TEST_STRUCTURE_PATHS[0]
-    point_params = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    point_params = np.asarray([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
     expected_point_coords = np.asarray([ 20.0+100.0j, 152.0+100.0j, 250.0+134.0j, 184.0+200.0j,  52.0+200.0j, 20.0+100.0j ])
     actual_point_coords = points_estimation.get_point_coords(path, point_params)
     assert np.allclose(expected_point_coords, actual_point_coords), "Should return the correct 2D coordinates for each point parameter between 0 and 1."
@@ -61,22 +61,22 @@ def test_get_segment_lengths():
         point_coords = None
         points_estimation.get_segment_lengths(point_coords) # Should fail with null point coords
 
-    point_coords = [1, 2, np.nan, 3]
+    point_coords = np.asarray([1, 2, np.nan, 3])
     assert np.nan not in points_estimation.get_segment_lengths(point_coords), "Result should not contain NaN values."
 
-    point_coords = np.asarray([ [0,0], [1,1], [3,3], [6,6] ])
-    expected_lengths = [1,2,3]
+    point_coords = np.asarray([ 0.0+0.0j, 1.0+1.0j, 3.0+3.0j, 6.0+6.0j ])
+    expected_lengths = np.asarray([1.41421356, 2.82842712, 4.24264069])
     actual_lengths = points_estimation.get_segment_lengths(point_coords)
     assert np.allclose(expected_lengths, actual_lengths), "Should return the correct segment lengths if inputs are valid."
 
 def test_get_mean_squared_relative_error():
     segment_lengths = np.asarray([1, 2, np.nan, 3])
-    expected_mse = 0.0
+    expected_mse = 1.6666666666666667
     actual_mse = points_estimation.get_mean_squared_relative_error(segment_lengths, 1)
     assert np.isclose(expected_mse, actual_mse), "Should ignore any NaN input values."
 
     segment_lengths = np.asarray([1,2,3,4])
-    expected_mse = 0.0
+    expected_mse = 3.5
     actual_mse = points_estimation.get_mean_squared_relative_error(segment_lengths, 1)
     assert np.isclose(expected_mse, actual_mse), "Should return the correct MSE if inputs are valid."
 
