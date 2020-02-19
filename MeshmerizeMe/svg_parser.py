@@ -144,9 +144,9 @@ def transform_matrix(params):
     h = ymax-ymin
     Lx = params['Lx']
     Ly = params['Ly']
-    A = np.diag([Lx/w, Ly/h, 1])
+    A = np.diag([Lx/w, -Ly/h, 1])
     A[0,2] = -Lx*xmin/w
-    A[1,2] = -Ly*ymin/h
+    A[1,2] = Ly
     return A
 
 
