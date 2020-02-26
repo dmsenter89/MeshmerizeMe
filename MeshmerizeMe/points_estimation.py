@@ -28,12 +28,18 @@ USER_CONFIG = {
 }
 
 def get_point_coords(path, point_params):
+    sorted_point_params = np.sort(point_params)
+    if sorted_point_params[0] < 0.0 or sorted_point_params[-1] > 1.0:
+        raise Exception("Cannot calculate point coordinates with parameters not in [0,1].")
     return np.asarray([ path.point(T) for T in point_params ])
 
 def get_segment_lengths(point_coords):
-    return np.abs( point_coords[1:] - point_coords[:-1] )
+    segment_lengths = np.abs( point_coords[1:] - point_coords[:-1] )
+    segment_lengths = segment_lengths[~np.isnan(segment_lengths)]
+    return segment_lengths
 
 def get_mean_squared_relative_error(segment_lengths, ds):
+    segment_lengths = segment_lengths[~np.isnan(segment_lengths)]
     return np.mean( np.square( (segment_lengths - ds) / ds ) )
 
 def graph_point_params_and_mse(args):

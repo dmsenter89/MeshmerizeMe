@@ -1,0 +1,6 @@
+<svg height="300" width="300">
+    <path id="top-side"    stroke="black" stroke-width="3" d="M20  100 L250 100" fill="none" />
+    <path id="right-side"  stroke="black" stroke-width="3" d="M250 100 L250 200" fill="none" />
+    <path id="bottom-side" stroke="black" stroke-width="3" d="M250 200 L20  200" fill="none" />
+    <path id="left-side"   stroke="black" stroke-width="3" d="M20  200 L20  100" fill="none" />
+</svg>

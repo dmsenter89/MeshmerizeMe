@@ -41,7 +41,10 @@ setup(
         "tqdm >= 4.32.1",
     ],
     extras_require={
-        'dev-tools':  ["Jinja2 >= 2.10.3"],
+        'dev-tools':  [
+            "Jinja2 >= 2.10.3",
+            "pytest >= 5.3.5"
+        ],
     },
 
     author='Michael Senter, Dylan Ray, and Steven Thomas',
